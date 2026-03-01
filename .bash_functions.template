@@ -1,0 +1,48 @@
+# ~/.bash_functions - Machine-specific shell functions
+# This file is NOT in the dotfiles repo. It is sourced from .bashrc.
+# Copy this template and customise for each machine:
+#   cp ~/dev/dotfiles/.bash_functions.template ~/.bash_functions
+#
+# For functions that work on every machine, use .bash_aliases instead.
+# This file is for project-specific or machine-specific functions.
+
+# ======================================================================
+# Database helpers
+# ======================================================================
+
+# ebadb — connect to EBA Oracle database
+# ebadb() { sqlplus "eba/${ORACLE_EBA_PASSWORD}@ebarubydev/xepdb1"; }
+
+# ebasysdb — connect as sysdba
+# ebasysdb() { sqlplus "sys/${ORACLE_SYSTEM_PASSWORD}@ebarubydev/xepdb1 as sysdba"; }
+
+# ======================================================================
+# Jira
+# ======================================================================
+
+# jlog <parent-issue> <time> — log time to a Jira sub-task
+#   jlog EBA-16575 2h        → logs 2h to the Develop/Config/Test sub-task
+#   jlog EBA-16575 30m       → logs 30 minutes
+#
+# Requires: jira CLI (https://github.com/ankitpokhrel/jira-cli)
+#
+# jlog() {
+#   if [[ $# -ne 2 ]]; then
+#     echo "Usage: jlog <parent-issue> <time>"
+#     echo "Example: jlog EBA-16575 2h"
+#     return 1
+#   fi
+#   local parent_issue="$1" time="$2"
+#   local subtask
+#   subtask=$(jira issue list -P "$parent_issue" --plain | grep -i "develop/config/test" | awk '{print $2}')
+#   if [[ -z "$subtask" ]]; then
+#     echo "No 'Develop/Config/Test' sub-task found under $parent_issue"
+#     return 1
+#   fi
+#   echo "Logging $time to $subtask..."
+#   if jira issue worklog add "$subtask" "$time" --comment "Development and configuration work" --no-input; then
+#     echo "Successfully logged $time to $subtask"
+#   else
+#     echo "Failed to log time to $subtask"
+#   fi
+# }

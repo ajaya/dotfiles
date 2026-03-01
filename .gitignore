@@ -1,0 +1,7 @@
+# Never commit real secrets or local config
+.secrets
+.bash_local
+.git-credentials
+
+# macOS
+.DS_Store

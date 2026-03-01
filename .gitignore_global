@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+*~
+*.swp
+*.swo
+*.bak
+.idea/
+.vscode/settings.json
+*.sublime-workspace
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Misc
+*.log
+.claude/settings.local.json

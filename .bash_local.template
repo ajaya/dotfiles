@@ -1,0 +1,90 @@
+# ~/.bash_local - Machine/project-specific configuration
+# This file is NOT in the dotfiles repo. It is sourced from .bashrc.
+# Copy this template and customise for each machine:
+#   cp ~/dev/dotfiles/.bash_local.template ~/.bash_local
+#
+# Examples below are from the EBA/SIC project setup. Delete or modify
+# sections that don't apply to your machine.
+
+# ======================================================================
+# Machine-specific environment
+# ======================================================================
+
+# Restic backup (change NAS hostname per machine)
+# export RESTIC_REPOSITORY='sftp:ajaya@bansalnas:/share1/BACKUP/RESTIC/restic-repo'
+
+# AWS (set your own profile)
+# export AWS_PROFILE=CT.ajaya.agrawalla
+
+# Atuin sync host override (default is https://api.atuin.sh)
+# export ATUIN_HOST="https://your-atuin-host.example.com"
+
+# ======================================================================
+# EBA / SIC project configuration
+# ======================================================================
+
+# SIC_HOME=${HOME}/dev/src/standard/EBA/RAILS
+# EBA_HOME=${SIC_HOME}/eba
+# EBA_INTAKE_HOME=${SIC_HOME}/eba_intake
+# export EBA_HOME EBA_INTAKE_HOME
+
+# EBA_MEMBER_UPLOAD_HOST=localhost
+# EBA_MEMBER_UPLOAD_USERNAME=ajaya
+# export EBA_MEMBER_UPLOAD_HOST EBA_MEMBER_UPLOAD_USERNAME
+
+# DISABLE_SPRING=1
+# export DISABLE_SPRING
+
+# # Oracle
+# if command -v brew &>/dev/null; then
+#   export OCI_DIR="$(brew --prefix)/lib"
+# elif [[ -d /usr/lib/oracle ]]; then
+#   export OCI_DIR="/usr/lib/oracle"
+# fi
+# export ORAENV_ASK=NO
+# export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+
+# if [[ $(uname -p) == 'arm' ]]; then
+#   DATABASE_ENGINE=PostgreSQL
+#   export DATABASE_ENGINE
+# fi
+
+# # GIT
+# GIT_HTTP_USERNAME=s000176
+# export GIT_HTTP_USERNAME
+
+# # BUNDLER
+# BUNDLE_GIT__SIC___EBA__COM="${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}"
+# export BUNDLE_GIT__SIC___EBA__COM
+# export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+
+# # ANSIBLE
+# ANSIBLE_VAULT_PASSWORD_FILE=/etc/secrets.txt
+# export ANSIBLE_VAULT_PASSWORD_FILE
+
+# ======================================================================
+# Machine-specific secrets (project tokens, DB passwords)
+# These can also live in ~/.secrets — your choice
+# ======================================================================
+
+# # EBA tokens
+# export EBA_INTAKE_API_TOKEN=""
+# export EBA_API_TOKEN=""
+# export EBA_NM_API_TOKEN=""
+# export EBA_MEMBER_UPLOAD_PASSWORD=""
+# export ORACLE_SYSTEM_PASSWORD=""
+# export ORACLE_EBA_PASSWORD=""
+
+# # Cloudflare (SIC-specific)
+# export CLOUDFLARE_SIC_API_TOKEN=""
+
+# # GitLab (SIC-specific)
+# export GITLAB_SIC_API_TOKEN=""
+# export GIT_HTTP_PASSWORD=""
+# export GLAB_TOKEN=""
+
+# # Restic
+# export RESTIC_PASSWORD=""
+
+# # Virta
+# export VIRTA_PASSWORD=""

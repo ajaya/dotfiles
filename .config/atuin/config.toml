@@ -1,0 +1,10 @@
+auto_sync = true
+update_check = true
+sync_frequency = "10m"
+search_mode = "fuzzy"
+style = "compact"
+secrets_filter = true
+enter_accept = true
+
+[daemon]
+# enabled = true

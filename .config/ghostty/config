@@ -1,0 +1,34 @@
+# Ghostty terminal configuration
+# Docs: https://ghostty.org/docs/config/reference
+
+# --- Theme & Appearance ---
+theme = tokyonight
+background-opacity = 0.98
+background-blur-radius = 20
+
+# --- Font ---
+font-family = "IosevkaTerm Nerd Font"
+font-size = 12
+
+# --- Window ---
+window-height = 54
+window-width = 183
+window-padding-x = 4
+window-padding-y = 2
+window-save-state = always
+
+# --- Cursor ---
+cursor-style = bar
+cursor-style-blink = false
+
+# --- Input & Clipboard ---
+clipboard-paste-protection = false
+copy-on-select = clipboard
+mouse-hide-while-typing = true
+
+# --- Shell ---
+shell-integration = bash
+confirm-close-surface = false
+
+# --- Keybindings ---
+keybind = shift+enter=text:\n

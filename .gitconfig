@@ -1,0 +1,205 @@
+# ~/.gitconfig
+# Machine-specific identity is set in ~/.gitconfig.local by install.sh
+
+[core]
+	editor = vim
+	excludesfile = ~/.gitignore_global
+	autocrlf = input
+	safecrlf = true
+	pager = delta
+
+[init]
+	defaultBranch = master
+
+# ----------------------------------------------------------------------
+# Delta (diff pager)
+# ----------------------------------------------------------------------
+
+[delta]
+	navigate = true               # n/N to jump between hunks
+	side-by-side = false          # set true for side-by-side (or use -s flag)
+	line-numbers = true
+	syntax-theme = Dracula        # syntax highlighting theme
+	dark = true
+	hyperlinks = true             # clickable file paths in supported terminals
+
+# ----------------------------------------------------------------------
+# Diff & Merge
+# ----------------------------------------------------------------------
+
+[diff]
+	renames = copies
+	algorithm = patience
+	colorMoved = default          # highlight moved lines in diffs
+	tool = vscode
+
+[difftool "vscode"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+
+[interactive]
+	diffFilter = delta --color-only
+
+[merge]
+	tool = vscode
+	conflictStyle = zdiff3        # shows base + ours + theirs in conflicts
+
+[mergetool "vscode"]
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+
+[mergetool]
+	keepBackup = false            # don't leave .orig files after merge
+
+[rerere]
+	enabled = true                # remember conflict resolutions
+
+# ----------------------------------------------------------------------
+# Remote operations
+# ----------------------------------------------------------------------
+
+[push]
+	default = simple
+	autoSetupRemote = true
+
+[pull]
+	ff = only
+	rebase = false
+
+[fetch]
+	prune = true
+	pruneTags = true
+
+[submodule]
+	recurse = true
+
+[transfer]
+	fsckObjects = true            # verify object integrity on transfer
+
+# ----------------------------------------------------------------------
+# Rebase
+# ----------------------------------------------------------------------
+
+[rebase]
+	autoSquash = true             # auto-squash fixup! and squash! commits
+	autoStash = true              # auto-stash before rebase, apply after
+
+# ----------------------------------------------------------------------
+# Branch & Log
+# ----------------------------------------------------------------------
+
+[branch]
+	sort = -committerdate         # sort branches by most recent commit
+
+[column]
+	ui = auto                     # columnize output (branches, tags, etc.)
+
+[log]
+	showMerges = false
+
+# ----------------------------------------------------------------------
+# Signing (GPG)
+# commit.gpgsign = true is default, aliases auto-detect GPG availability
+# ----------------------------------------------------------------------
+
+[commit]
+	gpgsign = true
+
+[tag]
+	gpgsign = true
+
+# gpg.program and credential.helper are set per-platform by install.sh
+# in ~/.gitconfig.local (included below, not tracked in repo)
+
+[include]
+	path = ~/.gitconfig.local
+
+# ----------------------------------------------------------------------
+# Aliases
+# ----------------------------------------------------------------------
+
+[alias]
+	# ---- Quick shortcuts ----
+	a = add -p                    # interactive staging
+	b = branch
+	co = checkout
+	cp = cherry-pick
+	d = diff
+	m = merge
+	p = push
+	s = status -s
+
+	# ---- Smart commit (auto-detects GPG) ----
+	# Signs when GPG is available, warns and skips when not
+	ci = "!f() { if gpg --list-secret-keys >/dev/null 2>&1; then git commit \"$@\"; else echo '⚠  GPG unavailable — signing disabled'; git commit --no-gpg-sign \"$@\"; fi; }; f"
+	cns = commit --no-gpg-sign   # explicit no-sign shortcut
+
+	# ---- Undo & Amend ----
+	undo = reset HEAD~1 --mixed   # undo last commit, keep changes staged
+	amend = commit --amend --no-edit  # amend last commit, keep message
+
+	# ---- WIP (work in progress) ----
+	wip = !git add -A && git commit -m 'WIP'
+	unwip = "!git log -1 --format=%s | grep -q '^WIP' && git reset HEAD~1 || echo 'Last commit is not a WIP'"
+
+	# ---- Rebase & Push ----
+	up = pull --rebase --autostash
+	pwl = push --force-with-lease
+	r = rebase -i
+	fixup = "!f() { git commit --fixup=$1; }; f"   # create fixup commit for given SHA
+
+	# ---- Log & History ----
+	l = log --oneline --graph --decorate
+	lg = log --no-merges --oneline --graph --decorate
+	hist = log --pretty=format:'%C(yellow)%h %C(cyan)%ad %C(reset)| %s%C(green)%d %C(dim)[%an]' --graph --date=short
+	last = log -1 HEAD --stat
+	today = "!git log --since='midnight' --author=\"$(git config user.email)\" --oneline"
+	standup = "!git log --since='yesterday' --author=\"$(git config user.email)\" --oneline"
+	contributors = shortlog -sne
+
+	# ---- Diff ----
+	staged = diff --cached
+	unstaged = diff
+
+	# ---- Branch management ----
+	branches = branch -a
+	remotes = remote -v
+	fresh = !git fetch --all --prune && git status
+	cleanup = "!git branch --merged | grep -Ev '\\*|main|master|develop' | xargs -n 1 git branch -d"
+
+	# ---- Worktree ----
+	wta = worktree add              # git wta ../feature-x feature-branch
+	wtl = worktree list
+	wtr = worktree remove
+	wtp = worktree prune
+
+	# ---- Utilities ----
+	root = rev-parse --show-toplevel
+	whoami = "!echo \"$(git config user.name) <$(git config user.email)>\""
+	aliases = "!git config --get-regexp alias | sed 's/alias\\.//g' | sort"
+	ignore = "!f() { curl -sL https://www.toptal.com/developers/gitignore/api/$@ ; }; f"
+
+	# ---- Dangerous (use with care) ----
+	nuke = "!git reset --hard origin/$(git branch --show-current)"  # reset to remote
+
+# ----------------------------------------------------------------------
+# Credentials (credential.helper is set in ~/.gitconfig.local)
+# macOS: osxkeychain | Linux: libsecret or cache
+# ----------------------------------------------------------------------
+
+[credential "https://git.sic-eba.com"]
+	provider = generic
+
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+
+# ----------------------------------------------------------------------
+# Misc
+# ----------------------------------------------------------------------
+
+[apply]
+	whitespace = strip
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

@@ -1,0 +1,95 @@
+# htop configuration
+# NOTE: htop rewrites this file when settings are changed via the UI,
+# which will strip all comments and reorder settings.
+
+htop_version=3.4.1
+config_reader_min_version=3
+
+# --- Process Filtering ---
+# fields: internal column IDs for the default process list
+fields=0 48 17 18 38 39 2 46 47 49 1
+hide_kernel_threads=1          # hide kworker, ksoftirqd, etc.
+hide_userland_threads=1        # collapse threads into their parent process
+hide_running_in_container=0    # show containerised processes normally
+shadow_other_users=0           # don't dim processes owned by other users
+
+# --- Display: Process Names & Paths ---
+show_thread_names=0            # show TID instead of thread name
+show_program_path=1            # show full path in Command column
+highlight_base_name=1          # bold the executable name for easy scanning
+highlight_deleted_exe=1        # flag processes whose binary was deleted/upgraded
+shadow_distribution_path_prefix=0
+find_comm_in_cmdline=1         # match comm name inside cmdline for search
+strip_exe_from_cmdline=1       # avoid duplicating exe path in cmdline
+show_merged_command=0          # keep exe and cmdline separate
+update_process_names=1         # refresh names for processes that rename themselves
+
+# --- Display: Visual Highlights ---
+highlight_megabytes=1          # colour large memory values differently
+highlight_threads=1            # colour thread rows differently from process rows
+highlight_changes=0            # don't flash changed values
+highlight_changes_delay_secs=5 # (unused when highlight_changes=0)
+
+# --- Display: Layout & Theme ---
+header_margin=0                # no blank line between header meters and process list
+screen_tabs=1                  # show tabs for switching between Main and I/O screens
+color_scheme=6                 # 0=default,1=mono,2=night,3=MC,4=dusk,5=midnight,6=black-night
+enable_mouse=1
+hide_function_bar=0            # show F1-F10 shortcut bar at the bottom
+
+# --- CPU & Memory ---
+detailed_cpu_time=1            # break CPU bar into usr/sys/nice/irq/etc.
+cpu_count_from_one=0           # CPUs numbered starting at 0
+show_cpu_usage=1               # show percentage in CPU meter
+show_cpu_frequency=1           # show current MHz (useful for throttling checks)
+show_cached_memory=1           # include cache in memory meter
+account_guest_in_cpu_meter=0   # ignore VM guest time in CPU totals
+
+# --- Refresh ---
+# delay is in tenths of a second: 10 = 1.0s between updates
+delay=10
+
+# --- Header Meters ---
+# layout: two columns, each 50% width
+# meter modes: 1=bar, 2=text, 3=LED, 4=graph
+header_layout=two_50_50
+
+# Left column: hostname, uptime, battery, CPU bars & meters
+column_meters_0=Hostname Uptime Battery Blank Blank AllCPUs2 Blank CPU CPU
+column_meter_modes_0=2 2 2 2 2 1 2 3 2
+
+# Right column: systemd, load, tasks, disk/net I/O, swap & memory
+column_meters_1=Systemd LoadAverage Tasks Blank Blank DiskIO NetworkIO Swap Memory Blank Memory Memory
+column_meter_modes_1=2 2 2 2 2 1 1 1 1 2 3 2
+
+# --- Default Sort ---
+tree_view=0                    # flat list (not tree) by default
+sort_key=46                    # 46 = PERCENT_CPU
+tree_sort_key=46
+sort_direction=-1              # descending (highest CPU first)
+tree_sort_direction=-1
+tree_view_always_by_pid=0
+all_branches_collapsed=0
+
+# === Screen: Main ===
+# Columns: PID, user, priority, nice, virtual mem, resident mem,
+#          state, %CPU, %MEM, cumulative time, full command
+screen:Main=PID USER PRIORITY NICE M_VIRT M_RESIDENT STATE PERCENT_CPU PERCENT_MEM TIME Command
+.sort_key=PERCENT_CPU
+.tree_sort_key=PERCENT_CPU
+.tree_view_always_by_pid=0
+.tree_view=0
+.sort_direction=-1
+.tree_sort_direction=-1
+.all_branches_collapsed=0
+
+# === Screen: I/O ===
+# Columns: PID, user, read/write/total I/O rates, %CPU, command
+screen:I/O=PID USER IO_READ_RATE IO_WRITE_RATE IO_RATE PERCENT_CPU Command
+.sort_key=IO_RATE
+.tree_sort_key=PID
+.tree_view_always_by_pid=0
+.tree_view=0
+.sort_direction=-1
+.tree_sort_direction=1
+.all_branches_collapsed=0
