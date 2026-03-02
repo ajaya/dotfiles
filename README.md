@@ -16,9 +16,9 @@ cd ~/dev/dotfiles
 The install script will:
 
 1. **Install packages** -- `brew bundle` on macOS; `apt`/`dnf` + verified binary installs on Linux
-2. **Symlink dotfiles** -- 18 config files linked from the repo into `~`
+2. **Symlink dotfiles** -- 17 config files linked from the repo into `~`
 3. **Configure git** -- credential helper and GPG program set per platform (in `~/.gitconfig.local`)
-4. **Copy templates** -- `~/.secrets` and `~/.bash_local` created from templates (never overwritten)
+4. **Copy templates** -- `~/.secrets`, `~/.bash_local`, and `~/.bash_functions` created from templates (never overwritten)
 
 ## Tools
 
@@ -34,7 +34,7 @@ The install script will:
 | [gh](https://cli.github.com/) | GitHub CLI | `.config/gh/config.yml` |
 | [glab](https://gitlab.com/gitlab-org/cli) | GitLab CLI | `.config/glab-cli/aliases.yml` |
 | [Vim](https://www.vim.org/) | Text editor with vim-plug and 6 plugins | `.vimrc` |
-| [Tmux](https://github.com/tmux/tmux) | Terminal multiplexer with tpm, powerkit, yank, fzf | `.tmux.conf` |
+| [Tmux](https://github.com/tmux/tmux) | Terminal multiplexer with tpm, sessionx, powerkit, yank, fzf | `.tmux.conf` |
 | [Ghostty](https://ghostty.org/) | GPU-accelerated terminal emulator (macOS) | `.config/ghostty/config` |
 | [htop](https://htop.dev/) | Interactive process viewer | `.config/htop/htoprc` |
 | [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting and line numbers | aliased in `.bash_aliases` |
@@ -99,7 +99,7 @@ Defined in `.bash_aliases`. All aliases adapt to the current platform.
 
 | Alias | Command | Notes |
 |-------|---------|-------|
-| `ls` | `eza` (or `ls -G`/`ls --color` fallback) | Uses eza if available |
+| `ls` | `eza` (or `ls -G`/`ls --color` fallback) | Translates `-p` to `--classify` for eza |
 | `lsm` | `eza -lah --icons --group-directories-first` | Detailed listing with icons |
 | `tree` | `eza --tree --icons` | Tree view (eza) |
 | `cat` | `bat --paging=never` | Syntax-highlighted cat (bat) |
@@ -124,6 +124,7 @@ Defined in `.bash_aliases`. All aliases adapt to the current platform.
 | `incognito` | `incognito start/stop` -- disable/enable history |
 | `pman` | `pman grep` -- render man page as PDF |
 | `help` | `help curl` -- simplified man page (tealdeer) |
+| `aliases` | `aliases` -- list all aliases and functions with descriptions |
 
 **File compression** (requires jpegoptim, pngquant, oxipng, ghostscript, img2pdf -- installed via Brewfile):
 
@@ -133,6 +134,7 @@ Defined in `.bash_aliases`. All aliases adapt to the current platform.
 | `jpgq` | `jpgq photo.jpg 80` -- compress JPEG to quality level (0-100) |
 | `pngsmall` | `pngsmall photo.png [60-80]` -- lossy + lossless PNG compression |
 | `pdfsmall` | `pdfsmall input.pdf [output.pdf] [screen\|ebook\|printer]` -- compress PDF |
+| `pdfunlock` | `pdfunlock file.pdf` -- remove password protection from PDFs |
 | `imgs2pdf` | `imgs2pdf output.pdf *.jpg` -- combine images into a single PDF |
 
 ### Starship
@@ -356,6 +358,7 @@ Configured in `.tmux.conf`. Uses [TPM](https://github.com/tmux-plugins/tpm) for 
 | tmux-power-zoom | Toggle pane zoom |
 | tmux-yank | Copy to system clipboard |
 | tmux-fzf | FZF integration for sessions, windows, panes |
+| tmux-sessionx | Session manager (`prefix + O`) |
 | tmux-powerkit | Status bar: datetime, battery, CPU, memory, git, hostname |
 
 Mouse enabled. Catppuccin Mocha theme. Status bar shows date, time, and mode.
@@ -374,7 +377,7 @@ Terminal emulator (macOS). Configured in `.config/ghostty/config`.
 | Setting | Value |
 |---------|-------|
 | Theme | Tokyo Night |
-| Font | IosevkaTerm Nerd Font, 12pt |
+| Font | Iosevka Term Nerd Font, 12pt |
 | Background | 98% opacity with blur |
 | Cursor | Bar, no blink |
 | Copy on select | On (auto-copies to clipboard) |
@@ -423,7 +426,8 @@ Modern `ls` replacement with icons and git status. Aliased as `ls` in `.bash_ali
 
 | Command | Action |
 |---------|--------|
-| `ls` | List files (eza) |
+| `ls` | List files (eza). `-p` auto-translates to `--classify` |
+| `ls -apl` | Works as expected -- `-p` is stripped and `--classify` added |
 | `lsm` | Detailed list with icons, grouped directories first |
 | `tree` | Tree view with icons |
 
@@ -497,12 +501,14 @@ dotfiles/
 ├── .gitconfig                       # Git (delta, GPG, 35+ aliases)
 ├── .gitignore_global                # Global gitignore
 ├── .vimrc                           # Vim (vim-plug, 6 plugins)
-├── .tmux.conf                       # Tmux (tpm, powerkit)
+├── .tmux.conf                       # Tmux (tpm, sessionx, powerkit)
 ├── .irbrc                           # Ruby IRB
 │
 ├── .secrets.template                # Template -> ~/.secrets
 ├── .bash_local.template             # Template -> ~/.bash_local
 ├── .bash_functions.template         # Template -> ~/.bash_functions
+├── SECURITY.md                      # Security policy
+├── LICENSE                          # MIT License
 │
 ├── .config/
 │   ├── starship.toml                # Prompt theme
@@ -513,8 +519,6 @@ dotfiles/
 │   ├── gh/config.yml                # GitHub CLI
 │   ├── glab-cli/aliases.yml         # GitLab CLI
 │   └── git/ignore                   # Git ignore (XDG)
-│
-└── .ruby-lsp/                       # Ruby LSP (VS Code)
 ```
 
 ### Files not in repo (local to each machine)
@@ -535,8 +539,9 @@ Everything project-specific goes in `~/.bash_local` (not in the repo). The templ
 - Project paths and environment variables
 - Database config (Oracle, PostgreSQL)
 - Bundler credentials
-- Custom functions (e.g., Jira time logging)
 - Machine-specific exports (`RESTIC_REPOSITORY`, `AWS_PROFILE`)
+
+Machine-specific functions go in `~/.bash_functions` (e.g., Jira time logging, database helpers). See `.bash_functions.template`.
 
 Credentials go in `~/.secrets` (chmod 600, sourced from `.bash_profile`).
 
