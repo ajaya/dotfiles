@@ -319,8 +319,32 @@ install_starship() {
   elif [[ $PKG_MGR == "dnf" ]] && dnf info starship &>/dev/null 2>&1; then
     sudo dnf install -y -q starship
   else
-    echo "  starship not available in package repos — install manually from official releases"
+    echo "  Installing starship from GitHub release..."
+    install_starship_from_release
   fi
+}
+
+install_starship_from_release() {
+  local version
+  if ! version=$(github_latest_version "starship/starship" false); then
+    echo "  Could not determine starship version — skipping"
+    return
+  fi
+
+  local arch_suffix
+  case $ARCH in
+    x86_64)        arch_suffix="x86_64" ;;
+    aarch64|arm64) arch_suffix="aarch64" ;;
+    *) echo "  Unsupported arch for starship: $ARCH"; return ;;
+  esac
+
+  local tmp
+  tmp=$(mktemp -d /tmp/starship-XXXX)
+  curl -sL "https://github.com/starship/starship/releases/download/${version}/starship-${arch_suffix}-unknown-linux-musl.tar.gz" \
+    -o "$tmp/starship.tar.gz"
+  tar -xzf "$tmp/starship.tar.gz" -C "$tmp"
+  sudo install -m 755 "$tmp/starship" /usr/local/bin/starship
+  rm -rf "$tmp"
 }
 
 install_atuin() {
@@ -331,8 +355,34 @@ install_atuin() {
   elif [[ $PKG_MGR == "dnf" ]] && dnf info atuin &>/dev/null 2>&1; then
     sudo dnf install -y -q atuin
   else
-    echo "  atuin not available in package repos — install manually from official releases"
+    echo "  Installing atuin from GitHub release..."
+    install_atuin_from_release
   fi
+}
+
+install_atuin_from_release() {
+  local version
+  if ! version=$(github_latest_version "atuinsh/atuin" false); then
+    echo "  Could not determine atuin version — skipping"
+    return
+  fi
+
+  local arch_suffix
+  case $ARCH in
+    x86_64)        arch_suffix="x86_64" ;;
+    aarch64|arm64) arch_suffix="aarch64" ;;
+    *) echo "  Unsupported arch for atuin: $ARCH"; return ;;
+  esac
+
+  local tmp
+  tmp=$(mktemp -d /tmp/atuin-XXXX)
+  curl -sL "https://github.com/atuinsh/atuin/releases/download/${version}/atuin-${arch_suffix}-unknown-linux-musl.tar.gz" \
+    -o "$tmp/atuin.tar.gz"
+  tar -xzf "$tmp/atuin.tar.gz" -C "$tmp"
+  # atuin tarball extracts into a subdirectory
+  sudo install -m 755 "$tmp"/atuin*/atuin /usr/local/bin/atuin 2>/dev/null \
+    || sudo install -m 755 "$tmp/atuin" /usr/local/bin/atuin
+  rm -rf "$tmp"
 }
 
 install_smug() {
@@ -474,8 +524,32 @@ install_zoxide() {
   elif [[ $PKG_MGR == "dnf" ]] && dnf info zoxide &>/dev/null 2>&1; then
     sudo dnf install -y -q zoxide
   else
-    echo "  zoxide not available in package repos — install manually from official releases"
+    echo "  Installing zoxide from GitHub release..."
+    install_zoxide_from_release
   fi
+}
+
+install_zoxide_from_release() {
+  local version
+  if ! version=$(github_latest_version "ajeetdsouza/zoxide"); then
+    echo "  Could not determine zoxide version — skipping"
+    return
+  fi
+
+  local arch_suffix
+  case $ARCH in
+    x86_64)        arch_suffix="x86_64" ;;
+    aarch64|arm64) arch_suffix="aarch64" ;;
+    *) echo "  Unsupported arch for zoxide: $ARCH"; return ;;
+  esac
+
+  local tmp
+  tmp=$(mktemp -d /tmp/zoxide-XXXX)
+  curl -sL "https://github.com/ajeetdsouza/zoxide/releases/download/v${version}/zoxide-${version}-${arch_suffix}-unknown-linux-musl.tar.gz" \
+    -o "$tmp/zoxide.tar.gz"
+  tar -xzf "$tmp/zoxide.tar.gz" -C "$tmp"
+  sudo install -m 755 "$tmp/zoxide" /usr/local/bin/zoxide
+  rm -rf "$tmp"
 }
 
 install_rv() {
