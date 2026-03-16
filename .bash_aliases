@@ -59,6 +59,7 @@ fi
 
 # Navigation
 alias up="cd .."                   # go up one directory
+alias g="z"                        # zoxide jump (short alias)
 alias cls="clear;lsm"             # clear screen + detailed listing
 
 # ── 2. System ────────────────────────────────────────────────────────

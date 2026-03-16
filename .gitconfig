@@ -74,6 +74,15 @@
 [transfer]
 	fsckObjects = true            # verify object integrity on transfer
 
+[fsck]
+	zeroPaddedFilemode = warn     # some old repos have zero-padded modes
+
+[fetch.fsck]
+	zeroPaddedFilemode = warn
+
+[receive.fsck]
+	zeroPaddedFilemode = warn
+
 # ----------------------------------------------------------------------
 # Rebase
 # ----------------------------------------------------------------------
@@ -181,15 +190,10 @@
 	nuke = "!git reset --hard origin/$(git branch --show-current)"  # reset to remote
 
 # ----------------------------------------------------------------------
-# Credentials (credential.helper is set in ~/.gitconfig.local)
-# macOS: osxkeychain | Linux: libsecret or cache
+# Credentials
+# credential.helper and host-specific credential sections belong in
+# ~/.gitconfig.local (not tracked — set by install.sh or manually)
 # ----------------------------------------------------------------------
-
-[credential "https://git.sic-eba.com"]
-	provider = generic
-
-[credential "https://dev.azure.com"]
-	useHttpPath = true
 
 # ----------------------------------------------------------------------
 # Misc

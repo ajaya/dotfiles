@@ -25,7 +25,7 @@
 #          -> bash-preexec
 #          -> atuin (Ctrl-R: history search, Up: shell history)
 #          -> aws completion
-#          -> rv
+#          -> mise (ruby, node, python, starship, atuin, zoxide)
 #          -> .bash_local (machine/project-specific)
 #          -> .bash_functions (machine-specific functions)
 #          -> .bash_aliases

@@ -45,7 +45,7 @@ The install script will:
 | [procs](https://github.com/dalance/procs) | Modern `ps` replacement with color and tree view | aliased in `.bash_aliases` |
 | [fd](https://github.com/sharkdp/fd) | Fast file finder (`find` replacement) | `.config/fd/ignore` |
 | [Smug](https://github.com/ivaaaan/smug) | Tmux session manager | layouts in `~/.config/smug/` |
-| [rv](https://rv.dev/) | Ruby version manager | init in `.bashrc` |
+| [mise](https://mise.jdx.dev/) | Tool version manager (ruby, node, python, starship, atuin, zoxide) | `.config/mise/config.toml`, activate in `.bashrc` |
 | [GnuPG](https://gnupg.org/) | GPG signing for git commits | signing config in `.gitconfig` |
 
 ---
@@ -68,7 +68,7 @@ Shell loads in this order:
        -> fzf                         #     Ctrl-T: find files, Alt-C: cd dir
        -> bash-preexec + atuin        #     Ctrl-R: history search, Up: history
        -> aws completion              #     aws CLI tab completion
-       -> rv                           #     Ruby version manager
+       -> mise                          #     tool version manager (ruby, node, python, etc.)
        -> ~/.bash_local               #     machine/project config
        -> ~/.bash_functions           #     machine-specific functions
        -> .bash_aliases               #     aliases, functions, compression
@@ -513,6 +513,7 @@ dotfiles/
 ├── .config/
 │   ├── starship.toml                # Prompt theme
 │   ├── atuin/config.toml            # History sync
+│   ├── mise/config.toml             # Tool versions (ruby, node, python, etc.)
 │   ├── ghostty/config               # Terminal emulator
 │   ├── fd/ignore                    # File finder ignores
 │   ├── htop/htoprc                  # Process viewer
@@ -564,7 +565,7 @@ All dotfiles detect and adapt to the current platform.
 | File manager | `open .` | `open .` | `xdg-open .` | `xdg-open .` |
 | FZF path | `/opt/homebrew/opt/fzf` | `/usr/local/opt/fzf` | `/usr/share/doc/fzf` | `/usr/share/doc/fzf` |
 
-**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux): `install.sh` installs base packages via apt/dnf. For tools not available in distro repos, it installs vetted release binaries when supported (delta, glab, smug, tealdeer, procs, Nerd Font) and otherwise prints a manual install hint.
+**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux): `install.sh` installs base packages via apt/dnf, then installs mise which manages ruby, node, python, starship, atuin, and zoxide. For other tools not in distro repos, it installs vetted release binaries (delta, glab, smug, tealdeer, procs, Nerd Font).
 
 ## Adding New Dotfiles
 

@@ -62,11 +62,8 @@ elif command -v aws_completer &>/dev/null; then
   complete -C "$(command -v aws_completer)" aws
 fi
 
-# RV (Ruby version manager)
-if command -v rv &>/dev/null; then
-  eval "$(rv shell init bash)"
-  eval "$(rv shell completions bash)"
-fi
+# Mise (tool version manager — ruby, node, python, starship, atuin, zoxide)
+eval "$(mise activate bash)"
 
 # Machine/project-specific config (not in dotfiles repo)
 [[ -f ~/.bash_local ]] && source ~/.bash_local

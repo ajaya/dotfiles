@@ -5,10 +5,8 @@
 # Shell & prompt
 brew "bash"
 brew "bash-completion@2"
-brew "starship"
-brew "atuin"
 brew "fzf"
-brew "zoxide"
+brew "mise"
 
 # Git
 brew "git"
@@ -17,9 +15,6 @@ brew "git-lfs"
 brew "gh"
 brew "glab"
 brew "gnupg"
-
-# Ruby
-brew "rv"
 
 # Editors
 brew "vim"

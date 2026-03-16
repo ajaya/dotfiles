@@ -38,6 +38,7 @@ HOME_FILES=(
 CONFIG_FILES=(
   .config/starship.toml
   .config/atuin/config.toml
+  .config/mise/config.toml
   .config/ghostty/config
   .config/fd/ignore
   .config/htop/htoprc
@@ -311,78 +312,10 @@ install_glab() {
   rm -rf "$tmp"
 }
 
-install_starship() {
-  if installed starship; then return; fi
-  echo "  Installing starship..."
-  if [[ $PKG_MGR == "apt" ]] && apt-cache show starship &>/dev/null 2>&1; then
-    sudo apt-get install -y -qq starship
-  elif [[ $PKG_MGR == "dnf" ]] && dnf info starship &>/dev/null 2>&1; then
-    sudo dnf install -y -q starship
-  else
-    echo "  Installing starship from GitHub release..."
-    install_starship_from_release
-  fi
-}
-
-install_starship_from_release() {
-  local version
-  if ! version=$(github_latest_version "starship/starship" false); then
-    echo "  Could not determine starship version — skipping"
-    return
-  fi
-
-  local arch_suffix
-  case $ARCH in
-    x86_64)        arch_suffix="x86_64" ;;
-    aarch64|arm64) arch_suffix="aarch64" ;;
-    *) echo "  Unsupported arch for starship: $ARCH"; return ;;
-  esac
-
-  local tmp
-  tmp=$(mktemp -d /tmp/starship-XXXX)
-  curl -sL "https://github.com/starship/starship/releases/download/${version}/starship-${arch_suffix}-unknown-linux-musl.tar.gz" \
-    -o "$tmp/starship.tar.gz"
-  tar -xzf "$tmp/starship.tar.gz" -C "$tmp"
-  sudo install -m 755 "$tmp/starship" /usr/local/bin/starship
-  rm -rf "$tmp"
-}
-
-install_atuin() {
-  if installed atuin; then return; fi
-  echo "  Installing atuin..."
-  if [[ $PKG_MGR == "apt" ]] && apt-cache show atuin &>/dev/null 2>&1; then
-    sudo apt-get install -y -qq atuin
-  elif [[ $PKG_MGR == "dnf" ]] && dnf info atuin &>/dev/null 2>&1; then
-    sudo dnf install -y -q atuin
-  else
-    echo "  Installing atuin from GitHub release..."
-    install_atuin_from_release
-  fi
-}
-
-install_atuin_from_release() {
-  local version
-  if ! version=$(github_latest_version "atuinsh/atuin" false); then
-    echo "  Could not determine atuin version — skipping"
-    return
-  fi
-
-  local arch_suffix
-  case $ARCH in
-    x86_64)        arch_suffix="x86_64" ;;
-    aarch64|arm64) arch_suffix="aarch64" ;;
-    *) echo "  Unsupported arch for atuin: $ARCH"; return ;;
-  esac
-
-  local tmp
-  tmp=$(mktemp -d /tmp/atuin-XXXX)
-  curl -sL "https://github.com/atuinsh/atuin/releases/download/${version}/atuin-${arch_suffix}-unknown-linux-musl.tar.gz" \
-    -o "$tmp/atuin.tar.gz"
-  tar -xzf "$tmp/atuin.tar.gz" -C "$tmp"
-  # atuin tarball extracts into a subdirectory
-  sudo install -m 755 "$tmp"/atuin*/atuin /usr/local/bin/atuin 2>/dev/null \
-    || sudo install -m 755 "$tmp/atuin" /usr/local/bin/atuin
-  rm -rf "$tmp"
+install_mise() {
+  if installed mise; then return; fi
+  echo "  Installing mise..."
+  curl -fsSL https://mise.jdx.dev/install.sh | bash
 }
 
 install_smug() {
@@ -439,6 +372,20 @@ install_nerd_font() {
 
 install_eza() {
   if installed eza; then return; fi
+
+  # eza requires a newer glibc than RHEL 9 / AlmaLinux 9 / Rocky 9 ship
+  if [[ -f /etc/os-release ]]; then
+    local distro_id
+    distro_id=$(. /etc/os-release && echo "${ID:-}")
+    local distro_like
+    distro_like=$(. /etc/os-release && echo "${ID_LIKE:-}")
+    if [[ "$distro_id" =~ ^(rhel|almalinux|rocky|centos)$ ]] || \
+       [[ "$distro_like" =~ rhel ]]; then
+      echo "  Skipping eza — glibc too old on RHEL/AlmaLinux/Rocky"
+      return
+    fi
+  fi
+
   echo "  Installing eza..."
 
   if [[ $PKG_MGR == "apt" ]]; then
@@ -516,51 +463,6 @@ install_procs() {
   rm -rf "$tmp"
 }
 
-install_zoxide() {
-  if installed zoxide; then return; fi
-  echo "  Installing zoxide..."
-  if [[ $PKG_MGR == "apt" ]] && apt-cache show zoxide &>/dev/null 2>&1; then
-    sudo apt-get install -y -qq zoxide
-  elif [[ $PKG_MGR == "dnf" ]] && dnf info zoxide &>/dev/null 2>&1; then
-    sudo dnf install -y -q zoxide
-  else
-    echo "  Installing zoxide from GitHub release..."
-    install_zoxide_from_release
-  fi
-}
-
-install_zoxide_from_release() {
-  local version
-  if ! version=$(github_latest_version "ajeetdsouza/zoxide"); then
-    echo "  Could not determine zoxide version — skipping"
-    return
-  fi
-
-  local arch_suffix
-  case $ARCH in
-    x86_64)        arch_suffix="x86_64" ;;
-    aarch64|arm64) arch_suffix="aarch64" ;;
-    *) echo "  Unsupported arch for zoxide: $ARCH"; return ;;
-  esac
-
-  local tmp
-  tmp=$(mktemp -d /tmp/zoxide-XXXX)
-  curl -sL "https://github.com/ajeetdsouza/zoxide/releases/download/v${version}/zoxide-${version}-${arch_suffix}-unknown-linux-musl.tar.gz" \
-    -o "$tmp/zoxide.tar.gz"
-  tar -xzf "$tmp/zoxide.tar.gz" -C "$tmp"
-  sudo install -m 755 "$tmp/zoxide" /usr/local/bin/zoxide
-  rm -rf "$tmp"
-}
-
-install_rv() {
-  if installed rv; then return; fi
-  echo "  Installing rv (Ruby version manager)..."
-  if command -v brew &>/dev/null; then
-    brew install rv
-  else
-    echo "  rv installer requires manual install from https://rv.dev/install"
-  fi
-}
 
 install_linux_packages() {
   echo ""
@@ -583,17 +485,14 @@ install_linux_packages() {
   # Tools that need special installation
   echo ""
   echo "Installing CLI tools..."
+  install_mise
   install_gh
   install_glab
-  install_starship
-  install_atuin
   install_smug
   install_eza
   install_tealdeer
   install_procs
-  install_zoxide
   install_nerd_font
-  install_rv
 
   echo ""
   echo "Package installation complete."
@@ -643,6 +542,13 @@ echo "Linking config files..."
 for file in "${CONFIG_FILES[@]}"; do
   link_file "$DOTFILES/$file" "$HOME/$file"
 done
+
+# Install mise-managed tools (config.toml is now symlinked)
+if ! $DRY_RUN && installed mise; then
+  echo ""
+  echo "Installing mise-managed tools..."
+  mise install --yes
+fi
 
 # Platform-specific git configuration
 echo ""
