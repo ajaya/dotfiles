@@ -72,3 +72,16 @@ disabled = true
 
 [nodejs]
 disabled = true
+
+# Jira profile module for Starship prompt
+# Shows active Jira profile and project key
+#
+# Add this to your ~/.config/starship.toml
+# Make sure jira-profile.sh is installed to ~/.local/bin/
+
+[custom.jira]
+command = "jira-profile"
+when = "test -f ~/.config/jira-cli/config.yml"
+format = "[◆ $output]($style) "
+style = "bold blue"
+shell = ["bash", "--noprofile", "--norc"]

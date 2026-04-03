@@ -1,7 +1,16 @@
 # ~/.bashrc - Interactive shell configuration
 # Cross-platform: macOS (arm64/x86_64) and Linux
 
-[[ $- != *i* ]] && return
+# --- Non-interactive setup (PATH for brew + mise shims) ---
+# Ensures tools are available in non-login shells (e.g., ssh host 'command')
+if [[ -z "${HOMEBREW_PREFIX:-}" && -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+fi
+# Non-interactive shell — mise shims only, then exit
+if [[ $- != *i* ]]; then
+  command -v mise &>/dev/null && eval "$(mise activate bash --shims)"
+  return
+fi
 
 # Shell options
 shopt -s histappend     # append to history, don't overwrite
@@ -14,6 +23,10 @@ shopt -s nocaseglob     # case-insensitive pathname expansion
 
 # Brew prefix (HOMEBREW_PREFIX is set by brew shellenv in .bash_profile)
 BREW_PREFIX="${HOMEBREW_PREFIX:-}"
+
+# Mise (tool version manager — ruby, node, python, starship, atuin, zoxide)
+# Activated early: adds mise-managed tools to PATH before they are initialised below
+eval "$(mise activate bash)"
 
 # Starship prompt
 command -v starship &>/dev/null && eval "$(starship init bash)"
@@ -61,9 +74,6 @@ if [[ -n "${BREW_PREFIX:-}" && -x "$BREW_PREFIX/bin/aws_completer" ]]; then
 elif command -v aws_completer &>/dev/null; then
   complete -C "$(command -v aws_completer)" aws
 fi
-
-# Mise (tool version manager — ruby, node, python, starship, atuin, zoxide)
-eval "$(mise activate bash)"
 
 # Machine/project-specific config (not in dotfiles repo)
 [[ -f ~/.bash_local ]] && source ~/.bash_local

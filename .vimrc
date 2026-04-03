@@ -2,6 +2,9 @@
 " Plugins managed by vim-plug (:PlugUpdate to update)
 
 " Basics
+set nocompatible          " disable vi compat (fixes arrow keys on Linux)
+set esckeys               " allow arrow keys in insert mode
+set ttimeoutlen=50        " fast escape sequence detection (ms)
 syntax on
 set number                " line numbers
 set cursorline            " highlight current line
@@ -31,8 +34,8 @@ set wildmenu              " tab-complete commands
 set wildmode=longest:full " complete to longest match first
 set confirm               " ask to save instead of error
 
-" Clear search highlight with Esc
-nnoremap <Esc> :nohlsearch<CR><Esc>
+" Clear search highlight with Ctrl-L (also redraws screen)
+nnoremap <C-l> :nohlsearch<CR><C-l>
 
 " Status line
 set statusline=%F%m%r\ %y\ %=\ L%l/%L\ C%c\ %p%%

@@ -6,7 +6,7 @@ compile = false
 
 [tools]
 ruby = "latest"
-node = "lts"
+node = "24"
 python = "latest"
 starship = "latest"
 atuin = "latest"

@@ -564,17 +564,23 @@ else
   mkdir -p "$HOME/.local/etc/bash_completion.d"
 
   if installed glab; then
-    glab completion -s bash > "$HOME/.local/etc/bash_completion.d/glab.bash" 2>/dev/null \
+    _comp=$(glab completion -s bash 2>/dev/null) \
+      && [[ "$_comp" == *complete* ]] \
+      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/glab.bash" \
       && echo "  glab" || true
   fi
 
   if installed smug; then
-    smug completion bash > "$HOME/.local/etc/bash_completion.d/smug.bash" 2>/dev/null \
+    _comp=$(smug completion bash 2>/dev/null) \
+      && [[ "$_comp" == *complete* ]] \
+      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/smug.bash" \
       && echo "  smug" || true
   fi
 
   if installed gh; then
-    gh completion -s bash > "$HOME/.local/etc/bash_completion.d/gh.bash" 2>/dev/null \
+    _comp=$(gh completion -s bash 2>/dev/null) \
+      && [[ "$_comp" == *complete* ]] \
+      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/gh.bash" \
       && echo "  gh" || true
   fi
 fi

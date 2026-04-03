@@ -29,7 +29,7 @@ mouse-hide-while-typing = true
 # --- Shell ---
 #shell-integration = bash
 #confirm-close-surface = false
-# shell-integration-features = ssh-terminfo
+shell-integration-features = ssh-terminfo
 
 # --- Keybindings ---
 keybind = shift+enter=text:\n

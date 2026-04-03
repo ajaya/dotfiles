@@ -16,6 +16,7 @@ _OS="$(uname -s)"
 alias sudo="sudo "                   # expand aliases through sudo
 
 # ls/eza — use eza if available, fallback to ls
+unalias ls 2>/dev/null                                    # clear system ls alias (colorls.sh)
 if command -v eza &>/dev/null; then
   # shellcheck disable=SC2032  # function intentionally shadows ls
   ls() {                                                  # ls replacement (eza)
