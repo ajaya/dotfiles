@@ -56,3 +56,9 @@ export PATH="$HOME/.local/bin:/usr/local/sbin:$PATH"
 
 # Interactive shell config
 [[ -s "$HOME/.bashrc" ]] && source "$HOME/.bashrc"
+
+# Homebrew keg-only database clients
+if command -v brew &>/dev/null; then
+  [[ -d "$(brew --prefix mysql-client 2>/dev/null)/bin" ]] && export PATH="$(brew --prefix mysql-client)/bin:$PATH"
+  [[ -d "$(brew --prefix libpq 2>/dev/null)/bin" ]] && export PATH="$(brew --prefix libpq)/bin:$PATH"
+fi

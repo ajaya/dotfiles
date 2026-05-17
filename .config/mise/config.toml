@@ -1,13 +1,17 @@
 [settings]
-idiomatic_version_file_enable_tools = ["ruby"]
+idiomatic_version_file_enable_tools = ["ruby", "node"]
 
 [settings.ruby]
 compile = false
 
 [tools]
-ruby = "latest"
-node = "24"
-python = "latest"
+ruby = "4.0.4"
+node = "26"
+python = "3.14.5"
 starship = "latest"
 atuin = "latest"
 zoxide = "latest"
+direnv = "latest"
+lazydocker = "latest"
+lazygit = "latest"
+aube = "latest"

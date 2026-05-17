@@ -3,34 +3,32 @@
 # Copy this template and customise for each machine:
 #   cp ~/dev/dotfiles/.bash_local.template ~/.bash_local
 #
-# Examples below are from the EBA/SIC project setup. Delete or modify
-# sections that don't apply to your machine.
+# Delete or modify sections that don't apply to your machine.
 
 # ======================================================================
 # Machine-specific environment
 # ======================================================================
 
-# Restic backup (change NAS hostname per machine)
-# export RESTIC_REPOSITORY='sftp:ajaya@bansalnas:/share1/BACKUP/RESTIC/restic-repo'
+# Restic backup
+# export RESTIC_REPOSITORY='sftp:user@backup.example.com:/backups/restic-repo'
 
 # AWS (set your own profile)
-# export AWS_PROFILE=CT.ajaya.agrawalla
+# export AWS_PROFILE=your-profile
 
 # Atuin sync host override (default is https://api.atuin.sh)
 # export ATUIN_HOST="https://your-atuin-host.example.com"
 
 # ======================================================================
-# EBA / SIC project configuration
+# Project-specific configuration
 # ======================================================================
 
-# SIC_HOME=${HOME}/dev/src/standard/EBA/RAILS
-# EBA_HOME=${SIC_HOME}/eba
-# EBA_INTAKE_HOME=${SIC_HOME}/eba_intake
-# export EBA_HOME EBA_INTAKE_HOME
+# PROJECT_HOME=${HOME}/dev/project
+# APP_HOME=${PROJECT_HOME}/app
+# export PROJECT_HOME APP_HOME
 
-# EBA_MEMBER_UPLOAD_HOST=localhost
-# EBA_MEMBER_UPLOAD_USERNAME=ajaya
-# export EBA_MEMBER_UPLOAD_HOST EBA_MEMBER_UPLOAD_USERNAME
+# APP_UPLOAD_HOST=localhost
+# APP_UPLOAD_USERNAME=your-username
+# export APP_UPLOAD_HOST APP_UPLOAD_USERNAME
 
 # DISABLE_SPRING=1
 # export DISABLE_SPRING
@@ -50,12 +48,12 @@
 # fi
 
 # # GIT
-# GIT_HTTP_USERNAME=s000176
+# GIT_HTTP_USERNAME=your-username
 # export GIT_HTTP_USERNAME
 
 # # BUNDLER
-# BUNDLE_GIT__SIC___EBA__COM="${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}"
-# export BUNDLE_GIT__SIC___EBA__COM
+# BUNDLE_GIT__EXAMPLE__COM="${GIT_HTTP_USERNAME}:${GIT_HTTP_PASSWORD}"
+# export BUNDLE_GIT__EXAMPLE__COM
 # export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
 # # ANSIBLE
@@ -67,24 +65,19 @@
 # These can also live in ~/.secrets — your choice
 # ======================================================================
 
-# # EBA tokens
-# export EBA_INTAKE_API_TOKEN=""
-# export EBA_API_TOKEN=""
-# export EBA_NM_API_TOKEN=""
-# export EBA_MEMBER_UPLOAD_PASSWORD=""
+# # Application tokens
+# export APP_API_TOKEN=""
+# export APP_UPLOAD_PASSWORD=""
 # export ORACLE_SYSTEM_PASSWORD=""
-# export ORACLE_EBA_PASSWORD=""
+# export ORACLE_APP_PASSWORD=""
 
-# # Cloudflare (SIC-specific)
-# export CLOUDFLARE_SIC_API_TOKEN=""
+# # Cloudflare
+# export CLOUDFLARE_API_TOKEN=""
 
-# # GitLab (SIC-specific)
-# export GITLAB_SIC_API_TOKEN=""
+# # GitLab
+# export GITLAB_API_TOKEN=""
 # export GIT_HTTP_PASSWORD=""
 # export GLAB_TOKEN=""
 
 # # Restic
 # export RESTIC_PASSWORD=""
-
-# # Virta
-# export VIRTA_PASSWORD=""

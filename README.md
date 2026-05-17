@@ -15,12 +15,14 @@ cd ~/dev/dotfiles
 
 The install script will:
 
-1. **Install packages** -- `brew bundle` on macOS; `apt`/`dnf` + verified binary installs on Linux
-2. **Symlink dotfiles** -- 17 config files linked from the repo into `~`
+1. **Install packages** -- `brew bundle` on macOS; `apt`/`dnf`, pinned release installs, and selected npm CLI tools on Linux
+2. **Symlink dotfiles** -- 18 config files linked from the repo into `~`
 3. **Configure git** -- credential helper and GPG program set per platform (in `~/.gitconfig.local`)
-4. **Copy templates** -- `~/.secrets`, `~/.bash_local`, and `~/.bash_functions` created from templates (never overwritten)
+4. **Copy templates** -- `~/.secrets`, `~/.bash_local`, `~/.bash_functions`, and `~/.irbrc.local` created from templates (never overwritten)
 
 ## Tools
+
+### Shell Experience
 
 | Tool | What it does | Config |
 |------|-------------|--------|
@@ -29,24 +31,65 @@ The install script will:
 | [Atuin](https://atuin.sh/) | Searchable shell history synced across machines | `.config/atuin/config.toml` |
 | [FZF](https://github.com/junegunn/fzf) | Fuzzy finder for files, directories, history | keybindings in `.bashrc` |
 | [Zoxide](https://github.com/ajeetdsouza/zoxide) | Smarter `cd` -- learns your most-used directories | init in `.bashrc` |
-| [Git](https://git-scm.com/) | Version control with delta diffs, GPG signing, 35+ aliases | `.gitconfig`, `.gitignore_global` |
-| [Delta](https://github.com/dandavison/delta) | Syntax-highlighted git diffs and blame | section in `.gitconfig` |
-| [gh](https://cli.github.com/) | GitHub CLI | `.config/gh/config.yml` |
-| [glab](https://gitlab.com/gitlab-org/cli) | GitLab CLI | `.config/glab-cli/aliases.yml` |
-| [Vim](https://www.vim.org/) | Text editor with vim-plug and 6 plugins | `.vimrc` |
 | [Tmux](https://github.com/tmux/tmux) | Terminal multiplexer with tpm, sessionx, powerkit, yank, fzf | `.tmux.conf` |
 | [Ghostty](https://ghostty.org/) | GPU-accelerated terminal emulator (macOS) | `.config/ghostty/config` |
-| [htop](https://htop.dev/) | Interactive process viewer | `.config/htop/htoprc` |
+
+### Git And Code Review
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [Git](https://git-scm.com/) | Version control with Hunk diffs, GPG signing, 35+ aliases | `.gitconfig`, `.gitignore_global` |
+| [Hunk](https://github.com/modem-dev/hunk) | Review-first terminal diff viewer | `.gitconfig` pager |
+| [lazygit](https://github.com/jesseduffield/lazygit) | Terminal UI for Git workflows | mise / Homebrew |
+| [gh](https://cli.github.com/) | GitHub CLI | `.config/gh/config.yml` |
+| [glab](https://gitlab.com/gitlab-org/cli) | GitLab CLI | `.config/glab-cli/aliases.yml` |
+| [GnuPG](https://gnupg.org/) | GPG signing for git commits | signing config in `.gitconfig` |
+
+### Editing And Text Navigation
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [Vim](https://www.vim.org/) | Text editor with vim-plug and 6 plugins | `.vimrc` |
 | [bat](https://github.com/sharkdp/bat) | `cat` with syntax highlighting and line numbers | aliased in `.bash_aliases` |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast recursive `grep` replacement | aliased in `.bash_aliases` |
+| [fd](https://github.com/sharkdp/fd) | Fast file finder (`find` replacement) | `.config/fd/ignore` |
+| [tealdeer](https://github.com/tealdeer-rs/tealdeer) | Fast `tldr` client -- simplified man pages | aliased as `help` |
+
+### Files And Data
+
+| Tool | What it does | Config |
+|------|-------------|--------|
 | [eza](https://github.com/eza-community/eza) | Modern `ls` replacement with icons and git status | aliased in `.bash_aliases` |
 | [jq](https://jqlang.github.io/jq/) | JSON processor for the command line | standalone |
-| [tealdeer](https://github.com/tealdeer-rs/tealdeer) | Fast `tldr` client -- simplified man pages | aliased as `help` |
+| [yq](https://github.com/mikefarah/yq) | YAML, XML, TOML, and JSON processor | standalone |
+| [MySQL client](https://dev.mysql.com/doc/refman/en/mysql.html) | MySQL command-line client libraries and tools | PATH in `.bash_profile` |
+| [PostgreSQL client](https://www.postgresql.org/docs/current/app-psql.html) | `psql` and libpq client tools | PATH in `.bash_profile` |
+| [SOPS](https://getsops.io/) | Editor for encrypted files | standalone |
+
+### System And Containers
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [htop](https://htop.dev/) | Interactive process viewer | `.config/htop/htoprc` |
 | [procs](https://github.com/dalance/procs) | Modern `ps` replacement with color and tree view | aliased in `.bash_aliases` |
-| [fd](https://github.com/sharkdp/fd) | Fast file finder (`find` replacement) | `.config/fd/ignore` |
+| [dtop](https://dtop.dev/) | Terminal dashboard for Docker container monitoring | standalone |
+| [lazydocker](https://github.com/jesseduffield/lazydocker) | Terminal UI for Docker containers | mise / Homebrew |
 | [Smug](https://github.com/ivaaaan/smug) | Tmux session manager | layouts in `~/.config/smug/` |
-| [mise](https://mise.jdx.dev/) | Tool version manager (ruby, node, python, starship, atuin, zoxide) | `.config/mise/config.toml`, activate in `.bashrc` |
-| [GnuPG](https://gnupg.org/) | GPG signing for git commits | signing config in `.gitconfig` |
+
+### Runtimes And Tool Versions
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [mise](https://mise.jdx.dev/) | Tool version manager for Ruby, Node, Python, and shell tools | `.config/mise/config.toml`, activate in `.bashrc` |
+
+### AI And Automation
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [Claude Code](https://www.anthropic.com/claude-code) | Claude coding agent in the terminal | standalone |
+| [Codex CLI](https://github.com/openai/codex) | OpenAI coding agent in the terminal | standalone |
+| [rtk](https://www.rtk-ai.app/) | CLI proxy for compact command output in AI-assisted workflows | standalone |
+| [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli) | Copilot coding agent in the terminal | standalone |
 
 ---
 
@@ -184,17 +227,15 @@ Smarter `cd` that learns your most-used directories. Initialized in `.bashrc`.
 
 ### Git
 
-Configured in `.gitconfig` with delta as the pager.
+Configured in `.gitconfig` with Hunk as the pager.
 
-**Delta** (diff pager):
+**Hunk** (diff pager):
 
-| Setting | Value |
-|---------|-------|
-| Line numbers | On |
-| Navigate | `n`/`N` to jump between hunks |
-| Syntax theme | Dracula |
-| Hyperlinks | On (clickable paths in Ghostty) |
-| Side-by-side | Off by default (`git diff -s` for side-by-side) |
+| Command | Action |
+|---------|--------|
+| `git diff` | Review working tree changes in Hunk |
+| `git show` | Review commit changes in Hunk |
+| `hunk diff` | Review current repo changes, including untracked files |
 
 **Diff and merge:**
 
@@ -218,7 +259,10 @@ Configured in `.gitconfig` with delta as the pager.
 | `branch.sort` | Most recent branches first |
 | `transfer.fsckObjects` | Verify object integrity |
 
-**Credentials:** Set per-platform by `install.sh` into `~/.gitconfig.local` -- osxkeychain on macOS, libsecret (or cache) on Linux.
+**Credentials:** Set per-platform by `install.sh` into `~/.gitconfig.local`.
+Git Credential Manager is preferred when installed, with osxkeychain on macOS
+and libsecret/cache on Linux as fallbacks. Set `DOTFILES_GITHUB_USERNAME` before
+install to write a GitHub-specific username into local config.
 
 **Aliases** (35+):
 
@@ -297,6 +341,14 @@ Aliases in `.config/glab-cli/aliases.yml`:
 | `glab co` | Checkout a merge request |
 
 Auth managed by `glab auth login` (stored in `~/.config/glab-cli/config.yml`, not in dotfiles).
+
+### lazygit
+
+Terminal UI for common Git workflows.
+
+| Command | Action |
+|---------|--------|
+| `lazygit` | Open the Git TUI for the current repository |
 
 ### Vim
 
@@ -441,6 +493,16 @@ JSON processor. Use it to parse and transform JSON from APIs and files.
 | `jq '.key'` | Extract a key |
 | `jq '.items[] \| .name'` | Extract nested values |
 
+### yq
+
+YAML, XML, TOML, and JSON processor. Use it for config files and structured CLI output.
+
+| Command | Action |
+|---------|--------|
+| `yq '.key' file.yml` | Read a YAML key |
+| `yq -o=json file.yml` | Convert YAML to JSON |
+| `yq -i '.key = "value"' file.yml` | Edit a YAML file in place |
+
 ### tealdeer (tldr)
 
 Simplified man pages with practical examples. Aliased as `help` in `.bash_aliases`.
@@ -467,9 +529,89 @@ Fast file finder. Ignore patterns in `.config/fd/ignore`:
 - `.git`
 - `Library/CloudStorage`, `Library/Mobile Documents`, `Library/Application Support/CloudDocs`
 
+### dtop
+
+Docker terminal dashboard installed by Homebrew.
+
+| Command | Action |
+|---------|--------|
+| `dtop` | Monitor local Docker containers |
+
+### lazydocker
+
+Terminal UI for Docker containers and compose services.
+
+| Command | Action |
+|---------|--------|
+| `lazydocker` | Open the Docker TUI |
+
+### MySQL Client
+
+macOS installs `mysql-client` with Homebrew as a keg-only formula. `.bash_profile`
+adds the client bin directory to `PATH`. Linux installs the distro package:
+`default-mysql-client` on apt systems and `mysql` on dnf systems.
+
+| Command | Action |
+|---------|--------|
+| `mysql --version` | Verify the MySQL client is available |
+| `mysql -h HOST -u USER -p` | Connect to a MySQL server |
+
+### PostgreSQL Client
+
+macOS installs `libpq` with Homebrew as a keg-only formula. `.bash_profile`
+adds the client bin directory to `PATH`. Linux installs `postgresql-client` on
+apt systems and `postgresql` on dnf systems.
+
+| Command | Action |
+|---------|--------|
+| `psql --version` | Verify the PostgreSQL client is available |
+| `psql "postgresql://USER@HOST/DB"` | Connect to a PostgreSQL server |
+
+### SOPS
+
+Editor for encrypted YAML, JSON, ENV, INI, and binary files.
+
+| Command | Action |
+|---------|--------|
+| `sops --version` | Verify SOPS is available |
+| `sops secrets.yml` | Edit an encrypted file |
+| `sops -d secrets.yml` | Decrypt to stdout |
+
+### rtk
+
+CLI proxy for compact command output in AI-assisted workflows.
+
+| Command | Action |
+|---------|--------|
+| `rtk <command>` | Run a command with compact, structured output |
+
+### Claude Code
+
+Claude coding agent for the terminal, installed as the `claude` command.
+
+| Command | Action |
+|---------|--------|
+| `claude` | Start Claude Code |
+
+### Codex CLI
+
+OpenAI coding agent for the terminal, installed as the `codex` command.
+
+| Command | Action |
+|---------|--------|
+| `codex` | Start Codex CLI |
+
+### GitHub Copilot CLI
+
+Copilot coding agent for the terminal, installed as the `copilot` command.
+
+| Command | Action |
+|---------|--------|
+| `copilot` | Start or use GitHub Copilot CLI |
+
 ### Ruby (IRB)
 
-Configured in `.irbrc`: 10,000 history entries, custom completion dialog colors, EBA project helpers (auto-loaded in Rails console).
+Configured in `.irbrc`: 10,000 history entries and custom completion dialog colors. Machine/project helpers live in `~/.irbrc.local`, created from `.irbrc.local.template`.
 
 ### Global Gitignore
 
@@ -491,6 +633,7 @@ dotfiles/
 ├── install.sh                       # Package install + symlink + platform config
 ├── Brewfile                         # macOS Homebrew packages
 ├── README.md
+├── CHANGELOG.md
 ├── .gitignore
 │
 ├── .bash_profile                    # Login shell (brew, PATH, secrets, history)
@@ -498,7 +641,7 @@ dotfiles/
 ├── .bash_aliases                    # Aliases and functions
 ├── .bash-preexec.sh                 # Lib required by atuin
 │
-├── .gitconfig                       # Git (delta, GPG, 35+ aliases)
+├── .gitconfig                       # Git (Hunk, GPG, 35+ aliases)
 ├── .gitignore_global                # Global gitignore
 ├── .vimrc                           # Vim (vim-plug, 6 plugins)
 ├── .tmux.conf                       # Tmux (tpm, sessionx, powerkit)
@@ -507,6 +650,7 @@ dotfiles/
 ├── .secrets.template                # Template -> ~/.secrets
 ├── .bash_local.template             # Template -> ~/.bash_local
 ├── .bash_functions.template         # Template -> ~/.bash_functions
+├── .irbrc.local.template            # Template -> ~/.irbrc.local
 ├── SECURITY.md                      # Security policy
 ├── LICENSE                          # MIT License
 │
@@ -529,6 +673,7 @@ dotfiles/
 | `~/.secrets` | Credentials and API tokens (chmod 600) |
 | `~/.bash_local` | Machine/project-specific config |
 | `~/.bash_functions` | Machine-specific functions (jlog, db helpers) |
+| `~/.irbrc.local` | Machine/project-specific IRB helpers |
 | `~/.gitconfig.local` | Platform-specific git config (credential helper, GPG) |
 | `~/.config/smug/*.yml` | Tmux session layouts |
 | `~/.config/glab-cli/config.yml` | GitLab auth tokens |
@@ -545,6 +690,9 @@ Everything project-specific goes in `~/.bash_local` (not in the repo). The templ
 Machine-specific functions go in `~/.bash_functions` (e.g., Jira time logging, database helpers). See `.bash_functions.template`.
 
 Credentials go in `~/.secrets` (chmod 600, sourced from `.bash_profile`).
+Exported values in `~/.secrets` are inherited by child processes, so keep
+session tokens short-lived and prefer one-shell exports for sensitive temporary
+values.
 
 ```bash
 vim ~/.bash_local       # machine/project config
@@ -558,14 +706,29 @@ All dotfiles detect and adapt to the current platform.
 | | macOS arm64 | macOS x86_64 | Linux arm64 | Linux x86_64 |
 |---|---|---|---|---|
 | Packages | Homebrew `/opt/homebrew` | Homebrew `/usr/local` | apt or dnf | apt or dnf |
-| Git credentials | osxkeychain | osxkeychain | libsecret or cache | libsecret or cache |
+| Git credentials | Git Credential Manager or osxkeychain | Git Credential Manager or osxkeychain | Git Credential Manager, libsecret, or cache | Git Credential Manager, libsecret, or cache |
 | GPG | Auto-detected | Auto-detected | Auto-detected | Auto-detected |
 | `ls` colors | `-G` | `-G` | `--color=auto` | `--color=auto` |
 | Ports | `lsof` | `lsof` | `ss` | `ss` |
 | File manager | `open .` | `open .` | `xdg-open .` | `xdg-open .` |
 | FZF path | `/opt/homebrew/opt/fzf` | `/usr/local/opt/fzf` | `/usr/share/doc/fzf` | `/usr/share/doc/fzf` |
 
-**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux): `install.sh` installs base packages via apt/dnf, then installs mise which manages ruby, node, python, starship, atuin, and zoxide. For other tools not in distro repos, it installs vetted release binaries (delta, glab, smug, tealdeer, procs, Nerd Font).
+**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux): `install.sh` installs base packages via apt/dnf, then installs mise which manages ruby, node, python, starship, atuin, zoxide, lazygit, and lazydocker. For other tools not in distro repos, it installs pinned release binaries, plus Hunk, Claude Code, and Codex CLI through npm after mise provisions Node. Checksums are verified when upstream publishes them; documented exceptions live in `SECURITY.md`.
+
+Pinned direct-download tools are defined near the top of `install.sh`.
+
+## Verification
+
+Run these before committing installer or documentation changes:
+
+```bash
+rtk bash -n install.sh test/dry-run.sh .bash_profile .bashrc .bash_aliases .bash_local.template .bash_functions.template
+rtk test/dry-run.sh
+rtk npx --yes cspell --no-progress --gitignore --dot "**/*"
+HOMEBREW_NO_AUTO_UPDATE=1 rtk brew bundle check --file=Brewfile --verbose
+```
+
+`brew bundle check` reports newly added formulae or casks until they are installed with `brew bundle install --file=Brewfile`.
 
 ## Adding New Dotfiles
 
@@ -589,6 +752,7 @@ On another machine: `cd ~/dev/dotfiles && git pull`
 vim ~/.bash_local                  # configure for this machine
 vim ~/.secrets                     # add credentials
 export DOTFILES_GIT_NAME="Your Name" DOTFILES_GIT_EMAIL="you@example.com"
+export DOTFILES_GITHUB_USERNAME="your-github-username"
 ./install.sh                       # apply machine-local git identity
 gh auth login                      # GitHub CLI auth
 glab auth login -h <your-host>     # GitLab CLI auth (if needed)

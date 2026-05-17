@@ -10,26 +10,26 @@
 # Database helpers
 # ======================================================================
 
-# ebadb — connect to EBA Oracle database
-# ebadb() { sqlplus "eba/${ORACLE_EBA_PASSWORD}@ebarubydev/xepdb1"; }
+# appdb — connect to an application database
+# appdb() { sqlplus "app/${ORACLE_APP_PASSWORD}@dbhost/service"; }
 
-# ebasysdb — connect as sysdba
-# ebasysdb() { sqlplus "sys/${ORACLE_SYSTEM_PASSWORD}@ebarubydev/xepdb1 as sysdba"; }
+# appsysdb — connect as sysdba
+# appsysdb() { sqlplus "sys/${ORACLE_SYSTEM_PASSWORD}@dbhost/service as sysdba"; }
 
 # ======================================================================
 # Jira
 # ======================================================================
 
 # jlog <parent-issue> <time> — log time to a Jira sub-task
-#   jlog EBA-16575 2h        → logs 2h to the Develop/Config/Test sub-task
-#   jlog EBA-16575 30m       → logs 30 minutes
+#   jlog PROJ-123 2h        → logs 2h to the matching sub-task
+#   jlog PROJ-123 30m       → logs 30 minutes
 #
 # Requires: jira CLI (https://github.com/ankitpokhrel/jira-cli)
 #
 # jlog() {
 #   if [[ $# -ne 2 ]]; then
 #     echo "Usage: jlog <parent-issue> <time>"
-#     echo "Example: jlog EBA-16575 2h"
+#     echo "Example: jlog PROJ-123 2h"
 #     return 1
 #   fi
 #   local parent_issue="$1" time="$2"

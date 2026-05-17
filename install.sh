@@ -8,6 +8,16 @@ BACKED_UP=0
 LINKED=0
 SKIPPED=0
 
+# Pinned Linux release artifacts. Keep these explicit so installer behavior is
+# reproducible and reviewable; do not resolve "latest" at install time.
+MISE_VERSION="2026.5.10"
+GLAB_VERSION="1.97.0"
+SMUG_VERSION="0.3.17"
+NERD_FONT_VERSION="v3.4.0"
+TEALDEER_VERSION="1.8.1"
+PROCS_VERSION="0.14.11"
+SOPS_VERSION="3.13.1"
+
 # Detect platform
 OS="$(uname -s)"    # Darwin or Linux
 ARCH="$(uname -m)"  # arm64, aarch64, x86_64
@@ -105,21 +115,39 @@ configure_platform() {
   fi
 
   # Git credential helper
-  case $OS in
-    Darwin)
-      git config --file "$git_local" credential.helper osxkeychain
-      ;;
-    Linux)
-      if [[ -x /usr/lib/git-core/git-credential-libsecret ]] || \
-         [[ -x /usr/libexec/git-core/git-credential-libsecret ]]; then
-        git config --file "$git_local" credential.helper libsecret
-      else
-        git config --file "$git_local" credential.helper 'cache --timeout=3600'
-        echo "  Note: install libsecret for persistent credential storage"
-      fi
-      ;;
-  esac
-  echo "  credential.helper = $(git config credential.helper)"
+  git config --file "$git_local" --unset-all credential.helper >/dev/null 2>&1 || true
+
+  local gcm_path
+  gcm_path="$(command -v git-credential-manager 2>/dev/null || true)"
+  if [[ -z "$gcm_path" && -x /usr/local/share/gcm-core/git-credential-manager ]]; then
+    gcm_path="/usr/local/share/gcm-core/git-credential-manager"
+  fi
+
+  if [[ -n "$gcm_path" ]]; then
+    git config --file "$git_local" credential.helper ""
+    git config --file "$git_local" --add credential.helper "$gcm_path"
+  else
+    case $OS in
+      Darwin)
+        git config --file "$git_local" credential.helper osxkeychain
+        ;;
+      Linux)
+        if [[ -x /usr/lib/git-core/git-credential-libsecret ]] || \
+           [[ -x /usr/libexec/git-core/git-credential-libsecret ]]; then
+          git config --file "$git_local" credential.helper libsecret
+        else
+          git config --file "$git_local" credential.helper 'cache --timeout=3600'
+          echo "  Note: install libsecret for persistent credential storage"
+        fi
+        ;;
+    esac
+  fi
+  echo "  credential.helper = $(git config --file "$git_local" --get-all credential.helper | paste -sd ', ' -)"
+
+  if [[ -n "${DOTFILES_GITHUB_USERNAME:-}" ]]; then
+    git config --file "$git_local" credential.https://github.com.username "$DOTFILES_GITHUB_USERNAME"
+    echo "  credential.https://github.com.username = $DOTFILES_GITHUB_USERNAME"
+  fi
 
   # Default branch name
   git config --file "$git_local" init.defaultBranch master
@@ -162,21 +190,42 @@ configure_platform() {
 
 installed() { command -v "$1" &>/dev/null; }
 
-# Fetch latest release version from GitHub API (strips leading 'v')
-# Usage: version=$(github_latest_version "owner/repo") or with keep_v=true to keep 'v' prefix
-github_latest_version() {
-  local repo="$1" strip_v="${2:-true}"
-  local version
-  version=$(curl -sL "https://api.github.com/repos/${repo}/releases/latest" \
-    | grep '"tag_name"' | head -1 | cut -d'"' -f4)
-  if [[ -z "$version" ]]; then
+sha256_file() {
+  local file="$1"
+  if command -v sha256sum &>/dev/null; then
+    sha256sum "$file" | awk '{print $1}'
+  else
+    shasum -a 256 "$file" | awk '{print $1}'
+  fi
+}
+
+verify_sha256() {
+  local file="$1" expected="$2" actual
+  actual="$(sha256_file "$file")"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "  Checksum mismatch for $(basename "$file")" >&2
+    echo "    expected: $expected" >&2
+    echo "    actual:   $actual" >&2
     return 1
   fi
-  if [[ "$strip_v" == "true" ]]; then
-    echo "${version#v}"
-  else
-    echo "$version"
+}
+
+download_verified() {
+  local url="$1" dest="$2" checksum_url="$3" checksum_name="$4"
+  local checksum_file expected
+
+  curl -fsSL "$url" -o "$dest"
+  checksum_file="$(mktemp /tmp/dotfiles-checksums-XXXX)"
+  curl -fsSL "$checksum_url" -o "$checksum_file"
+  expected="$(awk -v name="$checksum_name" '$2 == name || $2 == "./" name { print $1; exit }' "$checksum_file")"
+  rm -f "$checksum_file"
+
+  if [[ -z "$expected" ]]; then
+    echo "  No checksum entry found for $checksum_name" >&2
+    return 1
   fi
+
+  verify_sha256 "$dest" "$expected"
 }
 
 install_apt_packages() {
@@ -184,7 +233,7 @@ install_apt_packages() {
   sudo apt-get update -qq
   sudo apt-get install -y -qq \
     bash bash-completion git git-lfs gnupg vim htop tmux wget fzf \
-    fd-find curl bat ripgrep jq
+    fd-find curl bat ripgrep jq yq default-mysql-client postgresql-client
 
   # fd is installed as fdfind on Debian/Ubuntu — symlink to fd
   if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
@@ -205,8 +254,7 @@ install_apt_packages() {
     if apt-cache show git-delta &>/dev/null 2>&1; then
       sudo apt-get install -y -qq git-delta
     else
-      echo "  Installing delta from GitHub release..."
-      install_delta_from_release "deb"
+      echo "  Skipping delta — no distro package and upstream release has no checksum file"
     fi
   fi
 }
@@ -215,47 +263,15 @@ install_dnf_packages() {
   echo "Installing base packages (dnf)..."
   sudo dnf install -y -q \
     bash bash-completion git git-lfs gnupg2 vim-enhanced htop tmux wget fzf \
-    fd-find curl bat ripgrep jq
+    fd-find curl bat ripgrep jq yq mysql postgresql
 
   # git-delta
   if ! installed delta; then
     if dnf info git-delta &>/dev/null 2>&1; then
       sudo dnf install -y -q git-delta
     else
-      echo "  Installing delta from GitHub release..."
-      install_delta_from_release "rpm"
+      echo "  Skipping delta — no distro package and upstream release has no checksum file"
     fi
-  fi
-}
-
-install_delta_from_release() {
-  local pkg_type="$1"
-  local version
-  if ! version=$(github_latest_version "dandavison/delta" false); then
-    echo "  Could not determine delta version — skipping"
-    return
-  fi
-
-  local arch_suffix
-  case $ARCH in
-    x86_64)  arch_suffix="amd64" ;;
-    aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for delta: $ARCH"; return ;;
-  esac
-
-  local url="https://github.com/dandavison/delta/releases/download/${version}"
-  if [[ $pkg_type == "deb" ]]; then
-    local tmp
-    tmp=$(mktemp /tmp/delta-XXXX.deb)
-    curl -sL "${url}/git-delta_${version}_${arch_suffix}.deb" -o "$tmp"
-    sudo dpkg -i "$tmp"
-    rm -f "$tmp"
-  elif [[ $pkg_type == "rpm" ]]; then
-    local tmp
-    tmp=$(mktemp /tmp/delta-XXXX.rpm)
-    curl -sL "${url}/git-delta-${version}-1.${ARCH}.rpm" -o "$tmp"
-    sudo rpm -i "$tmp"
-    rm -f "$tmp"
   fi
 }
 
@@ -288,14 +304,6 @@ install_glab() {
   fi
 
   # Fallback: install from GitLab release binary
-  local version
-  version=$(curl -sL "https://gitlab.com/api/v4/projects/34675721/releases" \
-    | grep -o '"tag_name":"v[^"]*"' | head -1 | cut -d'"' -f4 | tr -d 'v')
-  if [[ -z "$version" ]]; then
-    echo "  Could not determine glab version — skipping"
-    return
-  fi
-
   local arch_suffix
   case $ARCH in
     x86_64)        arch_suffix="amd64" ;;
@@ -305,8 +313,12 @@ install_glab() {
 
   local tmp
   tmp=$(mktemp -d /tmp/glab-XXXX)
-  curl -sL "https://gitlab.com/gitlab-org/cli/-/releases/v${version}/downloads/glab_${version}_linux_${arch_suffix}.tar.gz" \
-    -o "$tmp/glab.tar.gz"
+  local artifact="glab_${GLAB_VERSION}_linux_${arch_suffix}.tar.gz"
+  download_verified \
+    "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/${artifact}" \
+    "$tmp/glab.tar.gz" \
+    "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/checksums.txt" \
+    "$artifact"
   tar -xzf "$tmp/glab.tar.gz" -C "$tmp"
   sudo install -m 755 "$tmp/bin/glab" /usr/local/bin/glab
   rm -rf "$tmp"
@@ -315,18 +327,30 @@ install_glab() {
 install_mise() {
   if installed mise; then return; fi
   echo "  Installing mise..."
-  curl -fsSL https://mise.jdx.dev/install.sh | bash
+
+  local arch_suffix
+  case $ARCH in
+    x86_64)        arch_suffix="x64" ;;
+    aarch64|arm64) arch_suffix="arm64" ;;
+    *) echo "  Unsupported arch for mise: $ARCH"; return ;;
+  esac
+
+  local artifact="mise-v${MISE_VERSION}-linux-${arch_suffix}"
+  local tmp
+  tmp=$(mktemp -d /tmp/mise-XXXX)
+  download_verified \
+    "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/${artifact}" \
+    "$tmp/mise" \
+    "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/SHASUMS256.txt" \
+    "$artifact"
+  mkdir -p "$HOME/.local/bin"
+  install -m 755 "$tmp/mise" "$HOME/.local/bin/mise"
+  rm -rf "$tmp"
 }
 
 install_smug() {
   if installed smug; then return; fi
   echo "  Installing smug..."
-
-  local version
-  if ! version=$(github_latest_version "ivaaaan/smug"); then
-    echo "  Could not determine smug version — skipping"
-    return
-  fi
 
   local arch_suffix
   case $ARCH in
@@ -337,8 +361,12 @@ install_smug() {
 
   local tmp
   tmp=$(mktemp -d /tmp/smug-XXXX)
-  curl -sL "https://github.com/ivaaaan/smug/releases/download/v${version}/smug_${version}_Linux_${arch_suffix}.tar.gz" \
-    -o "$tmp/smug.tar.gz"
+  local artifact="smug_${SMUG_VERSION}_Linux_${arch_suffix}.tar.gz"
+  download_verified \
+    "https://github.com/ivaaaan/smug/releases/download/v${SMUG_VERSION}/${artifact}" \
+    "$tmp/smug.tar.gz" \
+    "https://github.com/ivaaaan/smug/releases/download/v${SMUG_VERSION}/checksums.txt" \
+    "$artifact"
   tar -xzf "$tmp/smug.tar.gz" -C "$tmp"
   sudo install -m 755 "$tmp/smug" /usr/local/bin/smug
   rm -rf "$tmp"
@@ -351,15 +379,12 @@ install_nerd_font() {
   fi
   echo "  Installing IosevkaTerm Nerd Font..."
 
-  local version
-  if ! version=$(github_latest_version "ryanoasis/nerd-fonts" false); then
-    echo "  Could not determine Nerd Fonts version — skipping"
-    return
-  fi
-
   local tmp
   tmp=$(mktemp -d /tmp/nerd-font-XXXX)
-  curl -sL "https://github.com/ryanoasis/nerd-fonts/releases/download/${version}/IosevkaTerm.tar.xz" \
+  # Nerd Fonts does not publish checksums for per-font archives. Keep the
+  # version pinned and install over HTTPS; this exception is documented in
+  # SECURITY.md.
+  curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_VERSION}/IosevkaTerm.tar.xz" \
     -o "$tmp/IosevkaTerm.tar.xz"
   mkdir -p "$font_dir"
   tar -xJf "$tmp/IosevkaTerm.tar.xz" -C "$font_dir"
@@ -431,21 +456,19 @@ install_tealdeer_from_release() {
     *) echo "  Unsupported arch for tealdeer: $ARCH"; return ;;
   esac
 
-  local url="https://github.com/tealdeer-rs/tealdeer/releases/latest/download/tealdeer-linux-${arch_suffix}-musl"
+  local artifact="tealdeer-linux-${arch_suffix}-musl"
   mkdir -p "$HOME/.local/bin"
-  curl -sL "$url" -o "$HOME/.local/bin/tldr"
+  download_verified \
+    "https://github.com/tealdeer-rs/tealdeer/releases/download/v${TEALDEER_VERSION}/${artifact}" \
+    "$HOME/.local/bin/tldr" \
+    "https://github.com/tealdeer-rs/tealdeer/releases/download/v${TEALDEER_VERSION}/${artifact}.sha256" \
+    "$artifact"
   chmod +x "$HOME/.local/bin/tldr"
 }
 
 install_procs() {
   if installed procs; then return; fi
   echo "  Installing procs..."
-
-  local version
-  if ! version=$(github_latest_version "dalance/procs"); then
-    echo "  Could not determine procs version — skipping"
-    return
-  fi
 
   local arch_suffix
   case $ARCH in
@@ -456,11 +479,67 @@ install_procs() {
 
   local tmp
   tmp=$(mktemp -d /tmp/procs-XXXX)
-  curl -sL "https://github.com/dalance/procs/releases/download/v${version}/procs-v${version}-${arch_suffix}-linux.zip" \
+  # procs does not publish release checksums. Keep the version pinned and
+  # install over HTTPS; this exception is documented in SECURITY.md.
+  curl -fsSL "https://github.com/dalance/procs/releases/download/v${PROCS_VERSION}/procs-v${PROCS_VERSION}-${arch_suffix}-linux.zip" \
     -o "$tmp/procs.zip"
   unzip -qo "$tmp/procs.zip" -d "$tmp"
   sudo install -m 755 "$tmp/procs" /usr/local/bin/procs
   rm -rf "$tmp"
+}
+
+install_sops() {
+  if installed sops; then return; fi
+  echo "  Installing sops..."
+
+  local arch_suffix
+  case $ARCH in
+    x86_64)        arch_suffix="amd64" ;;
+    aarch64|arm64) arch_suffix="arm64" ;;
+    *) echo "  Unsupported arch for sops: $ARCH"; return ;;
+  esac
+
+  local artifact="sops-v${SOPS_VERSION}.linux.${arch_suffix}"
+  local tmp
+  tmp=$(mktemp -d /tmp/sops-XXXX)
+  download_verified \
+    "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/${artifact}" \
+    "$tmp/sops" \
+    "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.checksums.txt" \
+    "$artifact"
+  sudo install -m 755 "$tmp/sops" /usr/local/bin/sops
+  rm -rf "$tmp"
+}
+
+install_hunk() {
+  if installed hunk; then return; fi
+  if ! command -v mise &>/dev/null; then
+    echo "  Skipping hunk — mise unavailable"
+    return
+  fi
+
+  echo "  Installing hunk..."
+  mise exec -- npm install -g hunkdiff
+  mise reshim node >/dev/null 2>&1 || true
+}
+
+install_ai_cli_tools() {
+  if ! command -v mise &>/dev/null; then
+    echo "  Skipping AI CLI tools — mise unavailable"
+    return
+  fi
+
+  local packages=()
+  installed claude || packages+=("@anthropic-ai/claude-code")
+  installed codex || packages+=("@openai/codex")
+
+  if [[ ${#packages[@]} -eq 0 ]]; then
+    return
+  fi
+
+  echo "  Installing AI CLI tools..."
+  mise exec -- npm install -g "${packages[@]}"
+  mise reshim node >/dev/null 2>&1 || true
 }
 
 
@@ -492,6 +571,7 @@ install_linux_packages() {
   install_eza
   install_tealdeer
   install_procs
+  install_sops
   install_nerd_font
 
   echo ""
@@ -548,6 +628,10 @@ if ! $DRY_RUN && installed mise; then
   echo ""
   echo "Installing mise-managed tools..."
   mise install --yes
+  if [[ $OS == "Linux" ]]; then
+    install_hunk
+    install_ai_cli_tools
+  fi
 fi
 
 # Platform-specific git configuration
@@ -607,6 +691,7 @@ copy_template() {
 copy_template "$DOTFILES/.secrets.template" "$HOME/.secrets" 600
 copy_template "$DOTFILES/.bash_local.template" "$HOME/.bash_local"
 copy_template "$DOTFILES/.bash_functions.template" "$HOME/.bash_functions"
+copy_template "$DOTFILES/.irbrc.local.template" "$HOME/.irbrc.local"
 
 # Summary
 echo ""

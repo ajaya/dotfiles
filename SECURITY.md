@@ -16,9 +16,22 @@ Security review focus areas:
 
 - Never execute remote scripts via `curl | sh` or equivalent.
 - Prefer OS package managers (`brew`, `apt`, `dnf`).
+- Language package manager installs must use explicit package names and run after the toolchain is provisioned by mise.
 - If downloading release artifacts directly, use pinned versions and verify checksums/signatures whenever available.
+- If upstream does not publish checksums for a release artifact, keep the version pinned, use HTTPS, and document the exception in this file.
 - `--dry-run` must not write files or mutate local state.
 - Platform-specific mutable settings belong in machine-local files (`~/.gitconfig.local`), not tracked dotfiles.
+
+Current checksum exceptions:
+
+- IosevkaTerm Nerd Font archive from `ryanoasis/nerd-fonts`; upstream does not publish per-font checksums.
+- `procs` Linux zip from `dalance/procs`; upstream does not publish release checksums.
+
+Current npm-managed CLI installs:
+
+- `hunkdiff`
+- `@anthropic-ai/claude-code`
+- `@openai/codex`
 
 ## Secrets Handling
 
@@ -27,6 +40,7 @@ Security review focus areas:
   - `~/.secrets` for credentials/tokens
   - `~/.bash_local` for machine/project-specific configuration
 - Ensure `~/.secrets` permissions are restricted (`chmod 600 ~/.secrets`).
+- Values exported from `~/.secrets` are inherited by child processes. Prefer short-lived shell-local exports for session tokens such as `BW_SESSION`, and avoid storing long-lived secrets there unless the tool requires environment-variable auth.
 
 ## Supported Security Baseline
 
@@ -53,6 +67,9 @@ For pull requests touching installer logic, shell startup, git config, or secret
 
 - [ ] No remote script execution (`curl | sh`, `wget | bash`, etc.).
 - [ ] New downloads are pinned and verified (checksum/signature), or explicitly justified.
+- [ ] New language package manager installs use explicit package names and are documented.
+- [ ] New direct-download exceptions are listed in this file.
+- [ ] No remote release version is resolved dynamically at install time.
 - [ ] `./install.sh --dry-run` performs no writes or state mutations.
 - [ ] No secrets, tokens, or machine-local credentials are introduced into tracked files.
 - [ ] Machine-specific values are kept in local files (`~/.secrets`, `~/.bash_local`, `~/.gitconfig.local`).

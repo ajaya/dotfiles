@@ -28,6 +28,9 @@ BREW_PREFIX="${HOMEBREW_PREFIX:-}"
 # Activated early: adds mise-managed tools to PATH before they are initialised below
 eval "$(mise activate bash)"
 
+# Direnv (auto-load .envrc per directory)
+command -v direnv &>/dev/null && eval "$(direnv hook bash)"
+
 # Starship prompt
 command -v starship &>/dev/null && eval "$(starship init bash)"
 
@@ -83,3 +86,6 @@ fi
 
 # Aliases
 [[ -f ~/.bash_aliases ]] && source ~/.bash_aliases
+
+# Source optional local shell helpers (code() wrapper, etc.)
+[ -f "$HOME/.config/local_kit/shell/code-profile.sh" ] && . "$HOME/.config/local_kit/shell/code-profile.sh"

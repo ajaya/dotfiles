@@ -1,0 +1,11 @@
+# ~/.irbrc.local - Machine/project-specific IRB helpers
+# This file is NOT in the dotfiles repo. It is loaded from ~/.irbrc.
+#
+# Add Rails console helpers or project-specific shortcuts here.
+#
+# Example:
+# if defined?(Rails)
+#   def app_env
+#     Rails.env
+#   end
+# end

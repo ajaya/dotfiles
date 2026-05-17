@@ -6,26 +6,19 @@
 	excludesfile = ~/.gitignore_global
 	autocrlf = input
 	safecrlf = true
-	pager = delta
+	pager = hunk pager
 
 [init]
 	defaultBranch = master
 
 # ----------------------------------------------------------------------
-# Delta (diff pager)
+# Hunk (diff pager)
 # ----------------------------------------------------------------------
 
-[delta]
-	navigate = true               # n/N to jump between hunks
-	side-by-side = false          # set true for side-by-side (or use -s flag)
-	line-numbers = true
-	syntax-theme = Dracula        # syntax highlighting theme
-	dark = true
-	hyperlinks = true             # clickable file paths in supported terminals
-
-# ----------------------------------------------------------------------
-# Diff & Merge
-# ----------------------------------------------------------------------
+# `git diff` and `git show` open in Hunk's review UI.
+# Install source:
+#   macOS: Brewfile -> modem-dev/tap/hunk
+#   Linux: install.sh -> npm i -g hunkdiff
 
 [diff]
 	renames = copies
@@ -35,9 +28,6 @@
 
 [difftool "vscode"]
 	cmd = code --wait --diff $LOCAL $REMOTE
-
-[interactive]
-	diffFilter = delta --color-only
 
 [merge]
 	tool = vscode
