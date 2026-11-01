@@ -43,6 +43,7 @@ The install script will:
 | [lazygit](https://github.com/jesseduffield/lazygit) | Terminal UI for Git workflows | mise / Homebrew |
 | [gh](https://cli.github.com/) | GitHub CLI | `.config/gh/config.yml` |
 | [glab](https://gitlab.com/gitlab-org/cli) | GitLab CLI | `.config/glab-cli/aliases.yml` |
+| [Git Credential Manager](https://github.com/git-ecosystem/git-credential-manager) | HTTPS credential helper (macOS cask) | `~/.gitconfig.local` |
 | [GnuPG](https://gnupg.org/) | GPG signing for git commits | signing config in `.gitconfig` |
 
 ### Editing And Text Navigation
@@ -75,12 +76,50 @@ The install script will:
 | [dtop](https://dtop.dev/) | Terminal dashboard for Docker container monitoring | standalone |
 | [lazydocker](https://github.com/jesseduffield/lazydocker) | Terminal UI for Docker containers | mise / Homebrew |
 | [Smug](https://github.com/ivaaaan/smug) | Tmux session manager | layouts in `~/.config/smug/` |
+| [rsync](https://rsync.samba.org/) | File sync (newer than the macOS copy) | standalone |
+| [watch](https://gitlab.com/procps-ng/procps) | Re-run a command on an interval | standalone |
+
+### App Development
+
+macOS prerequisites for Rails apps whose services run in Docker. Project
+runtimes and tool pins (Ruby, Node, Python, Terraform, SOPS, age, ...) come
+from each repository's `mise.toml`.
+
+| Tool | What it does | Config |
+|------|-------------|--------|
+| [Colima](https://github.com/abiosoft/colima) | Docker engine VM for macOS | `colima start --cpu 4 --memory 8` |
+| [Docker CLI](https://docs.docker.com/engine/reference/commandline/cli/) + Compose | Container CLI for app services | Docker context `colima` |
+| [AWS CLI](https://aws.amazon.com/cli/) | AWS command line | completion in `.bashrc`; `AWS_PROFILE` in `~/.bash_local` |
+| [jira-cli](https://github.com/ankitpokhrel/jira-cli) | Jira from the terminal (`jira`) | token in `~/.secrets` |
+| [Oracle Instant Client](https://www.oracle.com/database/technologies/instant-client.html) | `ruby-oci8` libraries and `sqlplus` | `OCI_DIR` in `~/.bash_local` |
+| [uv](https://docs.astral.sh/uv/) | Python package and tool runner | standalone |
+
+Homebrew's Compose is a Docker CLI plugin. For `docker compose` to find it,
+add `$(brew --prefix)/lib/docker/cli-plugins` to `~/.docker/config.json`
+(that file also holds registry logins, so it is not tracked here). On Apple
+silicon:
+
+```json
+"cliPluginsExtraDirs": ["/opt/homebrew/lib/docker/cli-plugins"]
+```
+
+### Personal Tools
+
+`go`, `bun`, `iperf3`, `jpeg-xl`, `lima`, `mole`, `nmap`, `ollama`,
+`openapi-generator` and `confluence-cli` (`pchuri/tap`): installed from the
+Brewfile's "Personal tools" section; none needs dotfiles config.
 
 ### Runtimes And Tool Versions
 
 | Tool | What it does | Config |
 |------|-------------|--------|
 | [mise](https://mise.jdx.dev/) | Tool version manager for Ruby, Node, Python, and shell tools | `.config/mise/config.toml`, activate in `.bashrc` |
+
+Global npm CLIs are mise tools (`npm:` backend) so they survive Node upgrades:
+`bw` (`@bitwarden/cli`), `gws` (`@googleworkspace/cli`), `pinchtab`, `pi`
+(`@earendil-works/pi-coding-agent`) and `tmux-ide`. mise installs them with
+npm and skips install scripts unless the tool opts in with `npm_args`
+(`gws`, `pinchtab`, `tmux-ide`).
 
 ### AI And Automation
 
@@ -196,7 +235,7 @@ Shell history search and sync. Configured in `.config/atuin/config.toml`.
 |---------|-------|
 | Search mode | Fuzzy |
 | Style | Compact |
-| Sync | Every 10 minutes |
+| Sync | Every 10 minutes; server from `ATUIN_SYNC_ADDRESS` in `~/.bash_local` (default `https://api.atuin.sh`) |
 | Secrets filter | On (hides commands with tokens/passwords) |
 | Enter accept | On (Enter runs selected command) |
 

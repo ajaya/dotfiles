@@ -1,13 +1,18 @@
 [settings]
 idiomatic_version_file_enable_tools = ["ruby", "node"]
 
+# mise installs npm CLIs with npm; install scripts stay off unless a tool
+# opts in with npm_args below ("auto" would pick aube).
+[settings.npm]
+package_manager = "npm"
+
 [settings.ruby]
 compile = false
 
 [tools]
-ruby = "4.0.4"
+ruby = "4.0.9"
 node = "26"
-python = "3.14.5"
+python = "3.14.8"
 starship = "latest"
 atuin = "latest"
 zoxide = "latest"
@@ -15,3 +20,10 @@ direnv = "latest"
 lazydocker = "latest"
 lazygit = "latest"
 aube = "latest"
+
+# Global npm CLIs: mise keeps them across Node upgrades (npm -g does not).
+"npm:@bitwarden/cli" = "2026.10.1"               # bw
+"npm:@googleworkspace/cli" = { version = "0.22.5", npm_args = "--ignore-scripts=false" }  # gws: postinstall fetches the release binary (sha256-checked)
+"npm:pinchtab" = { version = "0.15.2", npm_args = "--ignore-scripts=false" }  # pinchtab: postinstall fetches the release binary (checksum-checked)
+"npm:@earendil-works/pi-coding-agent" = "1.4.0"  # pi
+"npm:tmux-ide" = { version = "2.9.15", npm_args = "--ignore-scripts=false" }  # tmux-ide: postinstall links its workspace packages (as npm -g did)

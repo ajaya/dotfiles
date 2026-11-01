@@ -33,6 +33,14 @@ Current npm-managed CLI installs:
 - `@anthropic-ai/claude-code`
 - `@openai/codex`
 
+Global npm CLIs managed by mise (`.config/mise/config.toml`, exact versions):
+
+- `@bitwarden/cli`, `@earendil-works/pi-coding-agent`: install scripts skipped.
+- `@googleworkspace/cli`, `pinchtab`: install scripts allowed; they download
+  the pinned release binary and verify its SHA-256 checksum.
+- `tmux-ide`: install script allowed; it links the package's own workspace
+  packages and restores executable bits.
+
 ## Secrets Handling
 
 - Never store real secrets in this repo.

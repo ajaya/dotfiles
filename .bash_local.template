@@ -15,8 +15,8 @@
 # AWS (set your own profile)
 # export AWS_PROFILE=your-profile
 
-# Atuin sync host override (default is https://api.atuin.sh)
-# export ATUIN_HOST="https://your-atuin-host.example.com"
+# Atuin sync server (default is https://api.atuin.sh)
+# export ATUIN_SYNC_ADDRESS="https://your-atuin-host.example.com"
 
 # ======================================================================
 # Project-specific configuration

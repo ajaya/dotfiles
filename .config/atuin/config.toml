@@ -4,6 +4,14 @@ sync_frequency = "10m"
 search_mode = "fuzzy"
 style = "compact"
 secrets_filter = true
+# Never record commands carrying credentials that secrets_filter misses.
+history_filter = [
+  "glpat-",
+  "PRIVATE-TOKEN",
+  "Authorization: Bearer",
+  "--password",
+  "--totp",
+]
 enter_accept = true
 
 [daemon]

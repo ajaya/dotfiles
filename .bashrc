@@ -26,7 +26,7 @@ BREW_PREFIX="${HOMEBREW_PREFIX:-}"
 
 # Mise (tool version manager — ruby, node, python, starship, atuin, zoxide)
 # Activated early: adds mise-managed tools to PATH before they are initialised below
-eval "$(mise activate bash)"
+command -v mise &>/dev/null && eval "$(mise activate bash)"
 
 # Direnv (auto-load .envrc per directory)
 command -v direnv &>/dev/null && eval "$(direnv hook bash)"
@@ -63,7 +63,6 @@ fi
 
 # Atuin (Ctrl-R: history search, Up: shell history)
 if command -v atuin &>/dev/null; then
-  export ATUIN_HOST="${ATUIN_HOST:-https://api.atuin.sh}"
   export ATUIN_NOBIND="true"
   eval "$(atuin init bash)"
   bind -x '"\C-r": __atuin_history'

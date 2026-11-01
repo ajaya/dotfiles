@@ -43,6 +43,9 @@ fi
 # Secrets
 [[ -f "$HOME/.secrets" ]] && source "$HOME/.secrets"
 
+# Locale: Ruby tools expect UTF-8 (LANG only; LC_* settings still win)
+export LANG="${LANG:-en_US.UTF-8}"
+
 # History
 export HISTCONTROL=ignoreboth:erasedups
 export HISTSIZE=100000
