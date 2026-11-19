@@ -19,7 +19,6 @@ FAILED=()
 # Pinned Linux release artifacts. Keep these explicit so installer behavior is
 # reproducible and reviewable; do not resolve "latest" at install time.
 MISE_VERSION="2026.10.25"
-GLAB_VERSION="1.131.0"
 SMUG_VERSION="0.3.17"
 NERD_FONT_VERSION="v3.5.1"
 # GitHub's published digest for IosevkaTerm.tar.xz at NERD_FONT_VERSION.
@@ -49,6 +48,13 @@ if [[ $OS == "Linux" ]]; then
   fi
 fi
 
+# Command-line clients from .config/mise/conf.d/dotfiles-clis.toml, installed
+# user-level through mise on every machine whose mise config is not
+# host-managed (also with --no-packages).
+# node and aube (global config) go first: mise requires the npm backend's
+# configured dependencies to be installed before confluence-cli.
+CLI_TOOLS=(node aube aws-cli github:ankitpokhrel/jira-cli glab gh npm:confluence-cli)
+
 # Files to symlink (relative to repo root)
 HOME_FILES=(
   .bash_profile
@@ -66,6 +72,7 @@ CONFIG_FILES=(
   .config/starship.toml
   .config/atuin/config.toml
   .config/mise/config.toml
+  .config/mise/conf.d/dotfiles-clis.toml
   .config/ghostty/config
   .config/fd/ignore
   .config/htop/htoprc
@@ -80,9 +87,12 @@ usage() {
   echo "Options:"
   echo "  --dry-run       Show what would be done without making changes"
   echo "  --yes, -y       Non-interactive: never prompt (implied without a TTY)"
-  echo "  --no-packages   Skip every package and tool install (brew, apt/dnf,"
-  echo "                  release downloads, fonts, mise install, npm) and sudo;"
-  echo "                  only link dotfiles and write local config"
+  echo "  --no-packages   No sudo and no system packages: skip brew, apt/dnf,"
+  echo "                  release downloads, fonts, the full mise install and"
+  echo "                  npm installs. Still links dotfiles, writes local config"
+  echo "                  and installs the command-line clients (gh, glab, jira,"
+  echo "                  confluence, aws) user-level through mise, unless the"
+  echo "                  host manages the global mise config"
   echo "  --help          Show this help message"
 }
 
@@ -406,54 +416,6 @@ install_base_packages() {
   fi
 }
 
-install_gh() {
-  if installed gh; then return; fi
-  echo "  Installing gh (GitHub CLI)..."
-
-  if [[ $PKG_MGR == "apt" ]]; then
-    run_sudo mkdir -p -m 755 /etc/apt/keyrings
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-      | run_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
-    run_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-      | run_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-    run_sudo apt-get update -qq
-    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh
-  elif [[ $PKG_MGR == "dnf" ]]; then
-    # EPEL 10 carries gh; add GitHub's repository only when no enabled one does.
-    if ! pkg_available gh; then
-      run_sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null \
-        || run_sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null
-    fi
-    run_sudo dnf install -y -q gh
-  fi
-}
-
-install_glab() {
-  if installed glab; then return; fi
-  echo "  Installing glab ${GLAB_VERSION} (GitLab CLI)..."
-
-  # Pinned release binary (distro packages lag behind the pin)
-  local arch_suffix
-  case $ARCH in
-    x86_64)        arch_suffix="amd64" ;;
-    aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for glab: $ARCH"; return 0 ;;
-  esac
-
-  local tmp
-  tmp=$(mktemp -d /tmp/glab-XXXX)
-  local artifact="glab_${GLAB_VERSION}_linux_${arch_suffix}.tar.gz"
-  download_verified \
-    "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/${artifact}" \
-    "$tmp/glab.tar.gz" \
-    "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/checksums.txt" \
-    "$artifact"
-  tar -xzf "$tmp/glab.tar.gz" -C "$tmp"
-  run_sudo install -m 755 "$tmp/bin/glab" /usr/local/bin/glab
-  rm -rf "$tmp"
-}
-
 install_mise() {
   if installed mise; then return; fi
   echo "  Installing mise..."
@@ -682,8 +644,6 @@ install_linux_packages() {
   echo ""
   echo "Installing CLI tools..."
   optional mise install_mise
-  optional gh install_gh
-  optional glab install_glab
   optional smug install_smug
   optional eza install_eza
   optional tealdeer install_tealdeer
@@ -754,7 +714,7 @@ done
 # Symlink .config files
 echo "Linking config files..."
 for file in "${CONFIG_FILES[@]}"; do
-  if [[ $file == .config/mise/config.toml ]] && $MISE_MANAGED; then
+  if [[ $file == .config/mise/* ]] && $MISE_MANAGED; then
     echo "  Skipping ~/$file — host-managed (mise.lock beside it)"
     continue
   fi
@@ -769,6 +729,26 @@ if ! $DRY_RUN && $INSTALL_PACKAGES && ! $MISE_MANAGED && installed mise; then
   if [[ $OS == "Linux" ]]; then
     optional hunk install_hunk
     optional "AI CLI tools" install_ai_cli_tools
+  fi
+fi
+
+# Command-line clients (user-level, no sudo; also with --no-packages). A
+# host-managed mise config provides them itself and is left alone.
+echo ""
+echo "Installing command-line clients (mise, user-level)..."
+if $MISE_MANAGED; then
+  echo "  Skipping — the host-managed mise config provides them"
+elif $DRY_RUN; then
+  echo "  [dry-run] Would run: mise install ${CLI_TOOLS[*]}"
+else
+  installed mise || optional mise install_mise
+  if installed mise; then
+    # From HOME, so only the global config (and its conf.d) decides versions.
+    # shellcheck disable=SC2016  # expanded by the inner bash
+    optional "command-line clients" bash -c 'cd "$HOME" && mise install --yes "$@"' _ "${CLI_TOOLS[@]}"
+  else
+    echo "  FAILED: command-line clients (mise unavailable)" >&2
+    FAILED+=("command-line clients")
   fi
 fi
 

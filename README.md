@@ -11,14 +11,14 @@ git clone https://github.com/<your-username>/dotfiles.git ~/dev/dotfiles
 cd ~/dev/dotfiles
 ./install.sh                      # install packages, symlink configs, set up templates
 ./install.sh --dry-run            # preview without changing anything
-./install.sh --yes --no-packages  # non-interactive; links and local config only
+./install.sh --yes --no-packages  # non-interactive; no sudo, no system packages
 ```
 
 | Option | Effect |
 |--------|--------|
 | `--dry-run` | Print what would change; write nothing |
 | `--yes`, `-y` | Never prompt. Implied when stdin/stdout is not a terminal (`ssh host cmd`, Ansible, CI); `sudo` then runs as `sudo -n` and fails instead of asking for a password |
-| `--no-packages` | Skip every install (brew, apt/dnf, release downloads, fonts, `mise install`, npm) and `sudo`; only link dotfiles, configure Git and copy templates |
+| `--no-packages` | No `sudo` and no system packages: skip brew, apt/dnf, release downloads, fonts, the full `mise install` and npm installs. Still links dotfiles, configures Git, copies templates and installs the [command-line clients](#command-line-clients) user-level through mise (unless the host manages the global mise config) |
 
 The install script will:
 
@@ -31,6 +31,23 @@ The script is idempotent: a second run links nothing, backs up nothing, leaves
 `~/.gitconfig.local` and generated completions untouched, and exits 0. It exits
 non-zero when a step fails (an optional tool install failing is reported in the
 summary after everything else has run).
+
+### Command-line clients
+
+gh, glab, jira (`ankitpokhrel/jira-cli`), confluence (`pchuri/confluence-cli`)
+and aws (AWS CLI v2) come from `.config/mise/conf.d/dotfiles-clis.toml`, linked
+to `~/.config/mise/conf.d/`, with pinned versions on every platform. The
+installer runs `mise install` for exactly these tools, user-level and without
+`sudo`, also with `--no-packages`; mise's shims and activated paths put them
+ahead of any Homebrew or distro copy. Versions: aws-cli 2.41.1, jira-cli 1.7.0
+and glab 1.131.0 as EBA's host tool lock pins them; gh 2.105.0 and
+confluence-cli 2.31.2 (latest when pinned).
+
+On a host whose provisioning owns the global mise config (a regular
+`~/.config/mise/config.toml` with `mise.lock` beside it), the file is **not**
+linked and nothing is installed: that host's locked `mise install` reads every
+`conf.d/*.toml` and would refuse tools its lock does not pin, so the host's own
+lock provides the clients. There `--no-packages` is links and local config only.
 
 ### Provisioned hosts
 
@@ -49,14 +66,14 @@ cd /path/to/dotfiles && ./install.sh --yes --no-packages
   On Linux `.bashrc` also loads `/etc/bashrc`, as the distribution's own does.
 - **Host-managed mise.** When `~/.config/mise/config.toml` is a regular file with
   a `mise.lock` beside it, the provisioning owns the global mise config: the
-  installer does not link dotfiles' mise config and does not run `mise install`
-  or the npm CLI installs.
+  installer links neither dotfiles' mise config nor its `conf.d` file and runs
+  no `mise install` (no command-line clients, no npm CLIs).
 - **Tools already present stay.** Without `--no-packages`, every package and
   pinned tool is skipped when its command is already on PATH (the installer adds
   `~/.local/bin` and mise's shims to PATH first), so a host-installed version is
   never replaced. dnf/apt packages missing from every enabled repository are
   skipped with a note (on EL10: `mysql` comes from `mysql8.4`; `eza` and
-  `tealdeer` have no package; fzf, fd, bat, ripgrep, git-delta and gh need EPEL).
+  `tealdeer` have no package; fzf, fd, bat, ripgrep and git-delta need EPEL).
 - **Git.** An existing `~/.git-credentials` keeps working: on Linux the `store`
   helper comes first. Commits and tags are signed only when a GPG secret key
   exists. `core.pager` is `hunk pager`, else `delta`, else Git's default.
@@ -147,8 +164,9 @@ silicon:
 ### Personal Tools
 
 `go`, `bun`, `iperf3`, `jpeg-xl`, `lima`, `mole`, `nmap`, `ollama`,
-`openapi-generator` and `confluence-cli` (`pchuri/tap`): installed from the
-Brewfile's "Personal tools" section; none needs dotfiles config.
+and `openapi-generator`: installed from the Brewfile's "Personal tools"
+section; none needs dotfiles config. `confluence-cli` is one of the
+[command-line clients](#command-line-clients).
 
 ### Runtimes And Tool Versions
 
@@ -745,6 +763,7 @@ dotfiles/
 │   ├── starship.toml                # Prompt theme
 │   ├── atuin/config.toml            # History sync
 │   ├── mise/config.toml             # Tool versions (ruby, node, python, etc.)
+│   ├── mise/conf.d/dotfiles-clis.toml  # gh, glab, jira, confluence, aws
 │   ├── ghostty/config               # Terminal emulator
 │   ├── fd/ignore                    # File finder ignores
 │   ├── htop/htoprc                  # Process viewer
@@ -800,7 +819,7 @@ All dotfiles detect and adapt to the current platform.
 | File manager | `open .` | `open .` | `xdg-open .` | `xdg-open .` |
 | FZF path | `/opt/homebrew/opt/fzf` | `/usr/local/opt/fzf` | `/usr/share/doc/fzf` or `/usr/share/fzf` | `/usr/share/doc/fzf` or `/usr/share/fzf` |
 
-**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux 9 and 10): `install.sh` installs the base packages apt/dnf offers (skipping ones already on PATH or in no enabled repository; it adds no repository except GitHub's for `gh` when none carries it), then installs mise which manages ruby, node, python, starship, atuin, zoxide, lazygit, and lazydocker. For other tools not in distro repos, it installs pinned release binaries, plus Hunk, Claude Code, and Codex CLI through npm after mise provisions Node. Checksums are verified when upstream publishes them; documented exceptions live in `SECURITY.md`.
+**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux 9 and 10): `install.sh` installs the base packages apt/dnf offers (skipping ones already on PATH or in no enabled repository; it adds no repository), then installs mise which manages ruby, node, python, starship, atuin, zoxide, lazygit, and lazydocker. For other tools not in distro repos, it installs pinned release binaries, plus Hunk, Claude Code, and Codex CLI through npm after mise provisions Node. Checksums are verified when upstream publishes them; documented exceptions live in `SECURITY.md`.
 
 Pinned direct-download tools are defined near the top of `install.sh`.
 

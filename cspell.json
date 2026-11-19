@@ -3,7 +3,7 @@
   "language"   : "en",
   "ignorePaths": [".git", ".bash-preexec.sh", ".claude", ".ruby-lsp", "LICENSE", "test/tmp"],
   "words"      : [
-    "bashmarks", "EPEL", "errexit", "initialise", "initialises", "psql", "repoquery", "shellcheck", "VERSINFO", "whatprovides",
+    "ankitpokhrel", "bashmarks", "clis", "EPEL", "errexit", "initialise", "initialises", "psql", "repoquery", "shellcheck", "VERSINFO", "whatprovides",
     "addrepo",          "almalinux",        "appdb",            "appsysdb",         "Atuin",
     "atuin",            "autocmd",          "autoindent",       "autostash",        "awscli",
     "batcat",           "BITWARDEN",        "catp",             "Catppuccin",       "cdspell",

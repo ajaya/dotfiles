@@ -4,6 +4,15 @@ All notable changes to these dotfiles are documented here.
 
 ## Unreleased
 
+### Command-line clients through mise on every platform
+
+- gh 2.105.0, glab 1.131.0, jira-cli 1.7.0 (`github:ankitpokhrel/jira-cli`), confluence-cli 2.31.2 (`npm:confluence-cli`, pchuri) and AWS CLI 2.41.1 (`aws-cli`) are defined once, in `.config/mise/conf.d/dotfiles-clis.toml`, linked to `~/.config/mise/conf.d/`. aws-cli, jira-cli and glab use EBA's host tool lock versions; gh and confluence-cli their latest release.
+- install.sh runs `mise install` for these five, user-level, on every machine (also with `--no-packages`). On a host-managed mise config (regular `config.toml` with `mise.lock`) the conf.d file is not linked and nothing is installed: that host's locked install would refuse tools its lock lacks, and its lock provides the clients.
+- aube is pinned (`latest` → `2.10.1`): mise installs the npm backend's configured dependencies (node, aube) before confluence-cli and cannot resolve `latest` for them offline.
+- `--no-packages` now means "no sudo and no system packages"; it still installs the clients (and mise into `~/.local/bin` when missing).
+- Removed the Linux gh install (EPEL / GitHub repository) and the pinned glab release install.
+- Removed gh, glab, awscli, jira-cli and confluence-cli (and the `pchuri/tap` tap) from the Brewfile. Existing Homebrew copies are left installed; mise's shims and activated paths come first on PATH, so the pinned versions win.
+
 ### Provisioned Linux hosts (AlmaLinux 10)
 
 - `install.sh --yes` / `-y`: never prompt; implied when stdin or stdout is not a terminal. Non-interactive runs use `sudo -n`, export `MISE_YES=1` and skip the post-install reminders.

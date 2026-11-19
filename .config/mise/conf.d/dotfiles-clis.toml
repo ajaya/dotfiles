@@ -1,0 +1,19 @@
+# Command-line clients dotfiles installs on every machine through mise,
+# user-level (install.sh runs `mise install` for exactly these tools, also
+# with --no-packages). Each is defined only here.
+#
+# Hosts whose provisioning owns ~/.config/mise/config.toml (a regular file
+# with mise.lock beside it) do not get this file: their locked install reads
+# every conf.d/*.toml and would refuse tools its lock does not pin, so the
+# host's own lock provides these clients there.
+#
+# Versions: aws-cli, jira-cli and glab as EBA's host tool lock pins them;
+# gh and confluence-cli at their latest release when pinned (2026-11-19).
+# confluence-cli runs on the global node (../config.toml).
+
+[tools]
+"aws-cli" = "2.41.1"                          # aws (AWS CLI v2)
+"github:ankitpokhrel/jira-cli" = "1.7.0"      # jira
+glab = "1.131.0"                              # glab (GitLab CLI)
+gh = "2.105.0"                                # gh (GitHub CLI)
+"npm:confluence-cli" = "2.31.2"               # confluence (pchuri/confluence-cli)

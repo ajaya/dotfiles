@@ -23,7 +23,7 @@ zoxide = "latest"
 direnv = "2.38.2"
 lazydocker = "0.25.2"
 lazygit = "latest"
-aube = "latest"
+aube = "2.10.1"
 
 # Global npm CLIs: mise keeps them across Node upgrades (npm -g does not).
 "npm:@bitwarden/cli" = "2026.10.1"               # bw

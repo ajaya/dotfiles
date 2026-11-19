@@ -21,9 +21,10 @@ Security review focus areas:
 - If upstream does not publish checksums for a release artifact, keep the version pinned, use HTTPS, and document the exception in this file.
 - `--dry-run` must not write files or mutate local state.
 - Platform-specific mutable settings belong in machine-local files (`~/.gitconfig.local`), not tracked dotfiles.
-- Never prompt: non-interactive runs (`--yes`, or no TTY) use `sudo -n`; `--no-packages` performs no installs, downloads or `sudo`.
+- Never prompt: non-interactive runs (`--yes`, or no TTY) use `sudo -n`; `--no-packages` uses no `sudo` and installs no system packages (only the user-level command-line clients through mise).
 - Do not replace a tool the host already provides (command on PATH) or link over a host-managed mise config (regular `config.toml` with `mise.lock` beside it).
-- Do not add package repositories, except GitHub's `gh` repository when no enabled repository carries `gh`.
+- Do not add package repositories.
+- The command-line clients (`.config/mise/conf.d/dotfiles-clis.toml`) are exact versions installed by mise, which verifies the published checksums (aqua registry, GitHub release digests); `confluence-cli` is an npm package installed with install scripts off.
 
 Current checksum exceptions (the IosevkaTerm Nerd Font archive is now checked
 against GitHub's published asset digest):

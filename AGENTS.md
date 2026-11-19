@@ -55,6 +55,7 @@ case.
 | `install.sh` | Cross-platform installer, symlink setup, local template creation |
 | `Brewfile` | macOS Homebrew formulae and casks |
 | `.config/mise/config.toml` | mise-managed tool versions |
+| `.config/mise/conf.d/dotfiles-clis.toml` | gh, glab, jira, confluence, aws (pinned; installed on every machine) |
 | `.bash_profile` | Login shell environment and PATH setup |
 | `.bashrc` | Interactive shell startup |
 | `.bash_aliases` | Shared aliases and shell functions |

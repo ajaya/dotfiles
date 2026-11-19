@@ -4,12 +4,12 @@
 #
 # Project toolchains (ruby, node, python, terraform, sops, ...) come from each
 # repository's mise.toml, not from here. The global npm CLIs live in
-# .config/mise/config.toml.
+# .config/mise/config.toml; gh, glab, jira-cli, confluence-cli and the AWS CLI
+# in .config/mise/conf.d/dotfiles-clis.toml (pinned, same on every platform).
 
 tap "modem-dev/tap"
 tap "instantclienttap/instantclient"
 tap "oven-sh/bun"
-tap "pchuri/tap"
 
 # Shell & prompt
 brew "bash"
@@ -21,8 +21,6 @@ brew "mise"
 brew "git"
 brew "git-delta"
 brew "git-lfs"
-brew "gh"
-brew "glab"
 brew "gnupg"
 brew "lazygit"
 brew "modem-dev/tap/hunk"
@@ -53,12 +51,10 @@ brew "watch"
 brew "wget"
 brew "yq"
 
-# App development: Docker via Colima, cloud and issue CLIs, database clients
+# App development: Docker via Colima, database clients
 brew "colima"
 brew "docker"
 brew "docker-compose"
-brew "awscli"
-brew "jira-cli"
 brew "sops"
 brew "libpq"
 brew "mysql-client"
@@ -81,7 +77,6 @@ brew "mole"
 brew "nmap"
 brew "ollama"
 brew "openapi-generator"
-brew "pchuri/tap/confluence-cli"
 
 # Image & PDF compression
 brew "jpegoptim"

@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# A second `install.sh --yes --no-packages` run changes nothing in HOME and
+# A second `install.sh --yes --no-packages` run changes nothing in HOME (mise's
+# own data and cache dirs aside: it refreshes its shims) and
 # exits 0; existing regular files are backed up once, then replaced by links.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tmp_home="$(mktemp -d)"
+# mise installs the command-line clients into the throwaway HOME (a few
+# hundred MB of downloads on the first run).
+export MISE_DATA_DIR="$tmp_home/.local/share/mise" MISE_CACHE_DIR="$tmp_home/.cache/mise"
+unset MISE_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_ENV
 marker="$(mktemp)"
 log="$(mktemp)"
 
@@ -29,7 +34,7 @@ touch "$marker"
 HOME="$tmp_home" "$repo_root/install.sh" --yes --no-packages </dev/null >"$log" 2>&1 \
   || { cat "$log" >&2; echo "second run failed" >&2; exit 1; }
 
-changed="$(find "$tmp_home" \( -path "$tmp_home/.local/state" -o -path "$tmp_home/.gnupg" \) -prune \
+changed="$(find "$tmp_home" \( -path "$tmp_home/.local/state" -o -path "$tmp_home/.gnupg" -o -path "$tmp_home/.cache" -o -path "$MISE_DATA_DIR" \) -prune \
   -o -newer "$marker" -print)"
 if [[ -n "$changed" ]]; then
   echo "second run changed HOME:" >&2
