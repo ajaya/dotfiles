@@ -3,7 +3,8 @@
   "language"   : "en",
   "ignorePaths": [".git", ".bash-preexec.sh", ".claude", ".ruby-lsp", "LICENSE", "test/tmp"],
   "words"      : [
-    "ankitpokhrel", "bashmarks", "behaviour", "isinstance", "pathlib", "splitlines", "tomllib", "clis", "EPEL", "errexit", "initialise", "initialises", "psql", "repoquery", "shellcheck", "VERSINFO", "whatprovides",
+    "alexkrechik", "ankitpokhrel", "appimage", "APPIMAGE", "bashmarks", "behaviour", "COLORTERM", "cucumberautocomplete", "Flathub", "kohler", "minisign", "mitchellh", "naumovs", "oderwat", "pascalreitermann", "pkgforge", "Reitermann", "rgba", "sqldeveloper", "clis", "EPEL", "errexit", "initialise", "initialises", "psql", "repoquery", "shellcheck", "VERSINFO", "whatprovides",
+    "isinstance", "pathlib", "splitlines", "tomllib",
     "addrepo",          "almalinux",        "appdb",            "appsysdb",         "Atuin",
     "atuin",            "autocmd",          "autoindent",       "autostash",        "awscli",
     "batcat",           "BITWARDEN",        "catp",             "Catppuccin",       "cdspell",

@@ -10,6 +10,7 @@ BACKED_UP=0
 LINKED=0
 SKIPPED=0
 FAILED=()
+GIT_SIGNING=false
 
 # Non-interactive when asked (--yes) or when there is no terminal (ssh host
 # cmd, Ansible, CI). Nothing below prompts; sudo then runs with -n so a
@@ -21,8 +22,17 @@ FAILED=()
 MISE_VERSION="2026.10.25"
 SMUG_VERSION="0.3.17"
 NERD_FONT_VERSION="v3.5.1"
-# GitHub's published digest for IosevkaTerm.tar.xz at NERD_FONT_VERSION.
-NERD_FONT_SHA256="054a4a369cdcc5d57e9bc91ea56dfefd66c71c253dcb0c0d7b72c0810373da26"
+# Linux fonts: "name sha256" (GitHub's published digest of <name>.tar.xz at
+# NERD_FONT_VERSION). Iosevka for VS Code, IosevkaTerm for Ghostty.
+NERD_FONTS=(
+  "Iosevka 3b94ea1dc3955756762f977b7677bca671947dd56bc755a6f8465a8e83b5f257"
+  "IosevkaTerm 054a4a369cdcc5d57e9bc91ea56dfefd66c71c253dcb0c0d7b72c0810373da26"
+)
+# Ghostty for Linux: pkgforge-dev's AppImage of the upstream release (its CI
+# verifies upstream's minisign on the source); GitHub's published digests.
+GHOSTTY_VERSION="1.4.0"
+GHOSTTY_APPIMAGE_SHA256_X86_64="50ad4f8b54a01e7d41426e7d12ffae9c88aa1c516ac140755e2bca596e1d2ae6"
+GHOSTTY_APPIMAGE_SHA256_AARCH64="932e21c671c215e6140633027acb4e8705cef3377d335202211c32d88b5bf506"
 TEALDEER_VERSION="1.8.1"
 PROCS_VERSION="0.14.11"
 SOPS_VERSION="3.13.3"
@@ -125,6 +135,13 @@ backup() {
     cp -a "$target" "$BACKUP_DIR/$rel"
     BACKED_UP=$((BACKED_UP + 1))
   fi
+}
+
+# Write a file only when its content changes (keeps reruns no-ops).
+write_if_changed() {
+  local dest="$1" content="$2"
+  if [[ -f "$dest" && "$(cat "$dest")" == "$content" ]]; then return 0; fi
+  printf '%s\n' "$content" > "$dest"
 }
 
 # A global mise config that is a regular file with a mise.lock beside it is
@@ -238,6 +255,7 @@ configure_platform() {
   # GPG program and signing: sign commits and tags only when a secret key
   # exists, so a plain `git commit` works on a host without one.
   local gpg_path signing=false
+  GIT_SIGNING=false
   gpg_path="$(command -v gpg 2>/dev/null || true)"
   if [[ -n "$gpg_path" ]]; then
     git_local_set "$git_local" gpg.program "$gpg_path"
@@ -249,6 +267,7 @@ configure_platform() {
   else
     git_local_set "$git_local" gpg.program
   fi
+  GIT_SIGNING=$signing
   git_local_set "$git_local" commit.gpgsign "$signing"
   git_local_set "$git_local" tag.gpgsign "$signing"
   if $signing; then
@@ -464,26 +483,85 @@ install_smug() {
   rm -rf "$tmp"
 }
 
-install_nerd_font() {
-  local font_dir="$HOME/.local/share/fonts"
-  if [[ -d "$font_dir" ]] && ls "$font_dir"/IosevkaTerm*.ttf &>/dev/null; then
-    return
-  fi
-  echo "  Installing IosevkaTerm Nerd Font..."
+# Linux Nerd Fonts, user-level (no sudo; also with --no-packages): each family
+# in ~/.local/share/fonts/<name>NerdFont with its four base styles (the
+# archive holds ~80 more weights, ~1 GB unpacked). A .sha256 marker records
+# the installed archive, so a rerun downloads nothing. Archives are fetched
+# into ~/.cache, never /tmp (a small RAM disk on some hosts).
+install_nerd_fonts() {
+  local entry name sha dir cache archive style members
+  cache="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles"
+  for entry in "${NERD_FONTS[@]}"; do
+    name="${entry%% *}" sha="${entry##* }"
+    dir="$HOME/.local/share/fonts/${name}NerdFont"
+    if [[ -f "$dir/.sha256" && "$(cat "$dir/.sha256")" == "$sha" ]]; then
+      continue
+    fi
+    if $DRY_RUN; then
+      echo "  [dry-run] Would install ${name} Nerd Font ${NERD_FONT_VERSION} into ~/${dir#"$HOME"/}"
+      continue
+    fi
+    echo "  Installing ${name} Nerd Font ${NERD_FONT_VERSION}..."
+    mkdir -p "$cache" "$dir"
+    archive="$cache/${name}-${NERD_FONT_VERSION}.tar.xz"
+    curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_VERSION}/${name}.tar.xz" -o "$archive"
+    if ! verify_sha256 "$archive" "$sha"; then
+      rm -f "$archive"
+      return 1
+    fi
+    members=(LICENSE.md)
+    for style in Regular Bold Italic BoldItalic; do
+      members+=("${name}NerdFont-${style}.ttf")
+    done
+    tar -xJf "$archive" -C "$dir" "${members[@]}"
+    rm -f "$archive"
+    printf '%s\n' "$sha" > "$dir/.sha256"
+    if command -v fc-cache &>/dev/null; then
+      fc-cache -f "$dir"
+    fi
+  done
+}
 
-  local tmp
-  tmp=$(mktemp -d /tmp/nerd-font-XXXX)
-  # Pinned archive, checked against GitHub's published asset digest.
-  curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_VERSION}/IosevkaTerm.tar.xz" \
-    -o "$tmp/IosevkaTerm.tar.xz"
-  verify_sha256 "$tmp/IosevkaTerm.tar.xz" "$NERD_FONT_SHA256" || { rm -rf "$tmp"; return 1; }
-  mkdir -p "$font_dir"
-  tar -xJf "$tmp/IosevkaTerm.tar.xz" -C "$font_dir"
-  rm -rf "$tmp"
-
-  if command -v fc-cache &>/dev/null; then
-    fc-cache -f "$font_dir"
+# Ghostty on Linux, user-level: the pinned AppImage in ~/.local/opt/ghostty,
+# linked as ~/.local/bin/ghostty, with a desktop entry for the app menu.
+# Skipped when a ghostty is already on PATH (a distribution package).
+install_ghostty() {
+  local arch sha dir image
+  if installed ghostty && [[ "$(command -v ghostty)" != "$HOME/.local/bin/ghostty" ]]; then
+    return 0
   fi
+  case $ARCH in
+    x86_64)        arch="x86_64";  sha="$GHOSTTY_APPIMAGE_SHA256_X86_64" ;;
+    aarch64|arm64) arch="aarch64"; sha="$GHOSTTY_APPIMAGE_SHA256_AARCH64" ;;
+    *) echo "  Unsupported arch for Ghostty: $ARCH"; return 0 ;;
+  esac
+  dir="$HOME/.local/opt/ghostty"
+  image="$dir/Ghostty-${GHOSTTY_VERSION}-${arch}.AppImage"
+  if [[ ! -x "$image" ]] || ! verify_sha256 "$image" "$sha" 2>/dev/null; then
+    echo "  Installing Ghostty ${GHOSTTY_VERSION} (AppImage)..."
+    mkdir -p "$dir"
+    curl -fsSL "https://github.com/pkgforge-dev/ghostty-appimage/releases/download/v${GHOSTTY_VERSION}/Ghostty-${GHOSTTY_VERSION}-${arch}.AppImage" \
+      -o "$image.part"
+    if ! verify_sha256 "$image.part" "$sha"; then
+      rm -f "$image.part"
+      return 1
+    fi
+    chmod 755 "$image.part"
+    mv "$image.part" "$image"
+  fi
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+  if [[ "$(readlink "$HOME/.local/bin/ghostty" 2>/dev/null)" != "$image" ]]; then
+    ln -sfn "$image" "$HOME/.local/bin/ghostty"
+  fi
+  write_if_changed "$HOME/.local/share/applications/com.mitchellh.ghostty.desktop" "[Desktop Entry]
+Type=Application
+Name=Ghostty
+Comment=A terminal emulator
+Exec=$HOME/.local/bin/ghostty
+Icon=utilities-terminal
+Terminal=false
+Categories=System;TerminalEmulator;
+StartupWMClass=com.mitchellh.ghostty"
 }
 
 install_eza() {
@@ -649,10 +727,68 @@ install_linux_packages() {
   optional tealdeer install_tealdeer
   optional procs install_procs
   optional sops install_sops
-  optional nerd-font install_nerd_font
+  optional ghostty install_ghostty
 
   echo ""
   echo "Package installation complete."
+}
+
+# ======================================================================
+# VS Code (user-level; also with --no-packages)
+# ======================================================================
+
+# The VS Code user settings directory for this platform.
+vscode_user_dir() {
+  if [[ -n "${DOTFILES_VSCODE_USER_DIR:-}" ]]; then
+    echo "$DOTFILES_VSCODE_USER_DIR"
+  elif [[ $OS == "Darwin" ]]; then
+    echo "$HOME/Library/Application Support/Code/User"
+  else
+    echo "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User"
+  fi
+}
+
+# Merge vscode/settings.json (plus the platform's external terminal and the
+# commit-signing choice) into the user settings file, keeping every other key
+# and comment, then install the extensions in vscode/extensions.txt that are
+# missing. DOTFILES_VSCODE_USER_DIR / DOTFILES_VSCODE_EXTENSIONS_DIR point both
+# elsewhere (tests).
+configure_vscode() {
+  local settings terminal_key ext_args=() have id
+  settings="$(vscode_user_dir)/settings.json"
+  case $OS in
+    Darwin) terminal_key='terminal.external.osxExec="Ghostty.app"' ;;
+    *)      terminal_key='terminal.external.linuxExec="ghostty"' ;;
+  esac
+  if ! installed python3; then
+    echo "  python3 not found — cannot merge VS Code settings" >&2
+    return 1
+  fi
+
+  echo "  Settings: ${settings/#"$HOME"/~}"
+  if $DRY_RUN; then
+    python3 -I "$DOTFILES/vscode/merge-settings.py" "$settings" "$DOTFILES/vscode/settings.json" \
+      "$terminal_key" "git.enableCommitSigning=$GIT_SIGNING" --dry-run | sed 's/^/    /'
+    echo "  [dry-run] Would install missing extensions from vscode/extensions.txt"
+    return 0
+  fi
+  python3 -I "$DOTFILES/vscode/merge-settings.py" "$settings" "$DOTFILES/vscode/settings.json" \
+    "$terminal_key" "git.enableCommitSigning=$GIT_SIGNING" | sed 's/^/    /'
+
+  if [[ -n "${DOTFILES_VSCODE_EXTENSIONS_DIR:-}" ]]; then
+    ext_args=(--extensions-dir "$DOTFILES_VSCODE_EXTENSIONS_DIR")
+  fi
+  # NODE_NO_WARNINGS: the code CLI prints Node deprecation warnings.
+  have="$(NODE_NO_WARNINGS=1 code "${ext_args[@]}" --list-extensions 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+  while read -r id; do
+    id="${id%%#*}"; id="${id//[[:space:]]/}"
+    [[ -z "$id" ]] && continue
+    if grep -qxF "$(tr '[:upper:]' '[:lower:]' <<<"$id")" <<<"$have"; then
+      continue
+    fi
+    echo "  Installing extension $id"
+    NODE_NO_WARNINGS=1 code "${ext_args[@]}" --install-extension "$id" >/dev/null
+  done < "$DOTFILES/vscode/extensions.txt"
 }
 
 # ======================================================================
@@ -756,12 +892,22 @@ fi
 echo ""
 configure_platform
 
-# Write a file only when its content changes (keeps reruns no-ops).
-write_if_changed() {
-  local dest="$1" content="$2"
-  if [[ -f "$dest" && "$(cat "$dest")" == "$content" ]]; then return 0; fi
-  printf '%s\n' "$content" > "$dest"
-}
+# Fonts (Linux, user-level; also with --no-packages). macOS: Brewfile casks.
+if [[ $OS == "Linux" ]]; then
+  echo ""
+  echo "Installing fonts (user-level)..."
+  optional fonts install_nerd_fonts
+fi
+
+# VS Code settings and extensions (user-level; also with --no-packages)
+echo ""
+echo "Configuring VS Code..."
+if installed code; then
+  optional "VS Code" configure_vscode
+else
+  echo "  Skipping — code not on PATH"
+fi
+
 
 # Generate bash completions for installed tools. Tools whose completion the
 # host's shell environment already loads are skipped again in .bashrc.

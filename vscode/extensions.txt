@@ -1,0 +1,10 @@
+# VS Code extensions install.sh installs when missing (one id per line).
+# Family-baseline extensions are not listed: EBA's repositories recommend them.
+catppuccin.catppuccin-vsc
+catppuccin.catppuccin-vsc-icons
+oderwat.indent-rainbow
+alexkrechik.cucumberautocomplete
+pascalreitermann93.vscode-yaml-sort
+christian-kohler.path-intellisense
+naumovs.color-highlight
+oracle.sql-developer

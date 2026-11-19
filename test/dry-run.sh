@@ -13,7 +13,7 @@ cleanup() {
 trap cleanup EXIT
 
 find "$tmp_home" -mindepth 1 -print | sort > "$before_manifest"
-HOME="$tmp_home" "$repo_root/install.sh" --dry-run >/tmp/dotfiles-dry-run.log
+HOME="$tmp_home" DOTFILES_VSCODE_USER_DIR="$tmp_home/vscode-user" "$repo_root/install.sh" --dry-run >/tmp/dotfiles-dry-run.log
 find "$tmp_home" -mindepth 1 -print | sort > "$after_manifest"
 
 if ! cmp -s "$before_manifest" "$after_manifest"; then

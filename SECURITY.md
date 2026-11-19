@@ -26,10 +26,21 @@ Security review focus areas:
 - Do not add package repositories.
 - The command-line clients (`.config/mise/conf.d/dotfiles-clis.toml`) are exact versions installed by mise, which verifies the published checksums (aqua registry, GitHub release digests); `confluence-cli` is an npm package installed with install scripts off.
 
-Current checksum exceptions (the IosevkaTerm Nerd Font archive is now checked
-against GitHub's published asset digest):
+Current checksum exceptions (the Iosevka and IosevkaTerm Nerd Font archives
+are checked against GitHub's published asset digests):
 
 - `procs` Linux zip from `dalance/procs`; upstream does not publish release checksums.
+
+Third-party build (pinned, checksum-verified):
+
+- Ghostty AppImage for Linux from `pkgforge-dev/ghostty-appimage`: not built by
+  the Ghostty project (which publishes no Linux binaries). The version and
+  GitHub's SHA-256 digest are pinned in `install.sh`; no signature or
+  attestation is published; its CI verifies upstream's minisign on the source.
+
+VS Code: `vscode/merge-settings.py` writes only the tracked keys into the user
+settings file and refuses the keys other provisioning owns; extensions are
+installed by id from the Marketplace through the `code` CLI.
 
 Current npm-managed CLI installs:
 

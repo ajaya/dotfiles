@@ -18,7 +18,7 @@ cd ~/dev/dotfiles
 |--------|--------|
 | `--dry-run` | Print what would change; write nothing |
 | `--yes`, `-y` | Never prompt. Implied when stdin/stdout is not a terminal (`ssh host cmd`, Ansible, CI); `sudo` then runs as `sudo -n` and fails instead of asking for a password |
-| `--no-packages` | No `sudo` and no system packages: skip brew, apt/dnf, release downloads, fonts, the full `mise install` and npm installs. Still links dotfiles, configures Git, copies templates and installs the [command-line clients](#command-line-clients) user-level through mise (unless the host manages the global mise config) |
+| `--no-packages` | No `sudo` and no system packages: skip brew, apt/dnf, release downloads (Ghostty included), the full `mise install` and npm installs. Still does the user-level steps: links dotfiles, configures Git, copies templates, installs the [command-line clients](#command-line-clients) through mise (unless the host manages the global mise config), the Linux [fonts](#fonts) and the [VS Code](#vs-code) settings and extensions |
 
 The install script will:
 
@@ -48,6 +48,51 @@ On a host whose provisioning owns the global mise config (a regular
 linked and nothing is installed: that host's locked `mise install` reads every
 `conf.d/*.toml` and would refuse tools its lock does not pin, so the host's own
 lock provides the clients. There `--no-packages` is links and local config only.
+
+### VS Code
+
+When `code` is on PATH (also with `--no-packages`), the installer merges
+`vscode/settings.json` into the user settings file (macOS
+`~/Library/Application Support/Code/User/settings.json`, Linux
+`~/.config/Code/User/settings.json`) and installs the extensions in
+`vscode/extensions.txt` that are missing.
+
+- **Merge, never replace.** Only the tracked keys are written, plus
+  `terminal.external.osxExec` (`Ghostty.app`) or `terminal.external.linuxExec`
+  (`ghostty`) and `git.enableCommitSigning` (true only when GPG has a secret
+  key, as for Git). Every other key and every comment stays; a key whose value
+  already matches is not touched, so a rerun writes nothing. The file may be
+  JSONC (comments, trailing commas).
+- **Keys other provisioning owns** are never written: `rubyLsp.rubyVersionManager`,
+  `hadolint.hadolintPath`, `ansible.python.interpreterPath`,
+  `settingsSync.ignoredSettings` (EBA's Ansible merges them on its machines).
+- **Not tracked on purpose:** machine paths, Ruby formatter settings (Ruby LSP
+  formats Ruby), personal connections, Copilot/chat/MCP keys, `yaml.schemas`,
+  and `claudeCode.allowDangerouslySkipPermissions` (add it yourself).
+- Family-baseline extensions are not listed: EBA's repositories recommend them.
+
+### Fonts
+
+macOS: the Brewfile casks (Iosevka, Iosevka Term, JetBrains Mono Nerd Fonts).
+Linux (also with `--no-packages`, no `sudo`): Iosevka Nerd Font (VS Code) and
+IosevkaTerm Nerd Font (Ghostty), Nerd Fonts v3.5.1, in
+`~/.local/share/fonts/<name>NerdFont/` with their four base styles (Regular,
+Bold, Italic, Bold Italic; the archives' other weights would take ~1 GB), then
+`fc-cache`. Archives are checked against GitHub's published SHA-256 digests,
+downloaded into `~/.cache/dotfiles` and removed after unpacking; a `.sha256`
+marker makes reruns download nothing.
+
+### Ghostty
+
+macOS: the Brewfile cask. Linux (package path only, not `--no-packages`):
+Ghostty has no official Linux package, Flathub app or EPEL package, so the
+installer puts the pinned AppImage from
+[pkgforge-dev/ghostty-appimage](https://github.com/pkgforge-dev/ghostty-appimage)
+(1.4.0, checked against GitHub's SHA-256 digest; its CI verifies upstream's
+minisign on the source) in `~/.local/opt/ghostty`, links `~/.local/bin/ghostty`
+and adds a desktop entry. It is skipped when a `ghostty` package is installed.
+`.config/ghostty/config` turns on `ssh-terminfo` and `ssh-env`, so Ghostty
+installs its terminfo on hosts it SSHes to.
 
 ### Provisioned hosts
 
