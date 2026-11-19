@@ -4,7 +4,6 @@
   "ignorePaths": [".git", ".bash-preexec.sh", ".claude", ".ruby-lsp", "LICENSE", "test/tmp"],
   "words"      : [
     "alexkrechik", "ankitpokhrel", "appimage", "APPIMAGE", "bashmarks", "behaviour", "COLORTERM", "cucumberautocomplete", "Flathub", "kohler", "minisign", "mitchellh", "naumovs", "oderwat", "pascalreitermann", "pkgforge", "pycache", "Reitermann", "rgba", "sqldeveloper", "clis", "EPEL", "errexit", "initialise", "initialises", "psql", "repoquery", "shellcheck", "VERSINFO", "whatprovides",
-    "isinstance", "pathlib", "splitlines", "tomllib",
     "addrepo",          "almalinux",        "appdb",            "appsysdb",         "Atuin",
     "atuin",            "autocmd",          "autoindent",       "autostash",        "awscli",
     "batcat",           "BITWARDEN",        "catp",             "Catppuccin",       "cdspell",
@@ -38,6 +37,7 @@
     "terminfo",         "tlnp",             "tokyonight",       "toplevel",         "totp",
     "tpope",            "ttimeoutlen",      "unwip",            "userland",         "vimrc",
     "VIRT",             "wildmenu",         "wildmode",         "worklog",          "Worktrees",
-    "worktree",         "wttr",             "ysiw",             "zdiff"
+    "worktree",         "wttr",             "ysiw",             "zdiff",
+    "isinstance", "pathlib", "splitlines", "tomllib"
   ]
 }
