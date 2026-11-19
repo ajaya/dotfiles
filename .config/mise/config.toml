@@ -14,8 +14,8 @@ compile = false
 # whose provisioning owns ~/.config/mise/config.toml (a mise.lock beside it)
 # keep their own file: install.sh does not link this one there.
 [tools]
-ruby = "4.0.9"
-node = "26.13.0"
+ruby = "4.0.10"
+node = "26.13.1"
 python = "3.14.10"
 starship = "1.27.0"
 atuin = "latest"

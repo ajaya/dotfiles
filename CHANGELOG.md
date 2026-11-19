@@ -33,9 +33,9 @@ EBA app (`.ruby-version`, `mise.toml`) for the global runtimes; EBA's host tool 
 
 | Tool | Where | From | To |
 |------|-------|------|----|
-| node | `.config/mise/config.toml` | `26` | `26.13.0` |
+| node | `.config/mise/config.toml` | `26` | `26.13.1` |
 | python | `.config/mise/config.toml` | `3.14.8` | `3.14.10` |
-| ruby | `.config/mise/config.toml` | `4.0.9` | `4.0.9` (unchanged; matches EBA `.ruby-version`) |
+| ruby | `.config/mise/config.toml` | `4.0.9` | `4.0.10` |
 | starship | `.config/mise/config.toml` | `latest` | `1.27.0` |
 | direnv | `.config/mise/config.toml` | `latest` | `2.38.2` |
 | lazydocker | `.config/mise/config.toml` | `latest` | `0.25.2` |
