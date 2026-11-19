@@ -1,0 +1,4 @@
+# direnv: trust the .envrc files in my own checkouts without `direnv allow`.
+# An .envrc anywhere else still asks first. ("~/" is expanded by direnv.)
+[whitelist]
+prefix = ["/opt/apps/dev", "~/dev"]

@@ -4,6 +4,9 @@ All notable changes to these dotfiles are documented here.
 
 ## Unreleased
 
+- direnv trusts `.envrc` files under `/opt/apps/dev` and `~/dev` without `direnv allow`
+  (`.config/direnv/direnv.toml`, `[whitelist] prefix`); one anywhere else still asks.
+
 ### VS Code, fonts, Ghostty
 
 - `vscode/settings.json` (personal keys from the Mac's user settings) and `vscode/extensions.txt` (Catppuccin theme and icons, indent-rainbow, Cucumber autocomplete, YAML sort, path IntelliSense, color highlight, SQL Developer). When `code` is on PATH, install.sh merges the keys into the platform's user settings file (also with `--no-packages`) and installs missing extensions. The merge keeps every other key and comment, reads JSONC, writes nothing when values already match, and never writes the keys EBA's Ansible owns (`rubyLsp.rubyVersionManager`, `hadolint.hadolintPath`, `ansible.python.interpreterPath`, `settingsSync.ignoredSettings`).

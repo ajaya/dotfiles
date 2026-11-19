@@ -85,6 +85,7 @@ CONFIG_FILES=(
   .config/mise/conf.d/dotfiles-clis.toml
   .config/ghostty/config
   .config/fd/ignore
+  .config/direnv/direnv.toml
   .config/htop/htoprc
   .config/gh/config.yml
   .config/glab-cli/aliases.yml
