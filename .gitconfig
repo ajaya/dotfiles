@@ -6,7 +6,6 @@
 	excludesfile = ~/.gitignore_global
 	autocrlf = input
 	safecrlf = true
-	pager = hunk pager
 
 [init]
 	defaultBranch = master
@@ -15,7 +14,9 @@
 # Hunk (diff pager)
 # ----------------------------------------------------------------------
 
-# `git diff` and `git show` open in Hunk's review UI.
+# `git diff` and `git show` open in Hunk's review UI when Hunk is installed:
+# install.sh sets core.pager in ~/.gitconfig.local (hunk, else delta, else
+# Git's default), so Git never calls a pager the machine lacks.
 # Install source:
 #   macOS: Brewfile -> modem-dev/tap/hunk
 #   Linux: install.sh -> npm i -g hunkdiff
@@ -96,17 +97,13 @@
 
 # ----------------------------------------------------------------------
 # Signing (GPG)
-# commit.gpgsign = true is default, aliases auto-detect GPG availability
+# install.sh sets commit.gpgsign and tag.gpgsign in ~/.gitconfig.local:
+# true when a GPG secret key exists, false otherwise (a plain `git commit`
+# works on a machine without a key). Rerun install.sh after adding a key.
 # ----------------------------------------------------------------------
 
-[commit]
-	gpgsign = true
-
-[tag]
-	gpgsign = true
-
-# gpg.program and credential.helper are set per-platform by install.sh
-# in ~/.gitconfig.local (included below, not tracked in repo)
+# gpg.program, signing, core.pager and credential.helper are set per machine
+# by install.sh in ~/.gitconfig.local (included below, not tracked in repo)
 
 [include]
 	path = ~/.gitconfig.local

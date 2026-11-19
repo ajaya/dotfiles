@@ -14,8 +14,10 @@ overwriting existing local config.
 Prefix shell commands with `rtk` when possible.
 
 ```bash
-rtk bash -n install.sh test/dry-run.sh .bash_profile .bashrc .bash_aliases .bash_local.template .bash_functions.template
+rtk bash -n install.sh test/dry-run.sh test/idempotence.sh .bash_profile .bashrc .bash_aliases .bash_local.template .bash_functions.template
+shellcheck install.sh test/*.sh
 rtk test/dry-run.sh
+rtk test/idempotence.sh
 rtk npx --yes cspell --no-progress --gitignore --dot "**/*"
 HOMEBREW_NO_AUTO_UPDATE=1 rtk brew bundle check --file=Brewfile --verbose
 ```
@@ -39,6 +41,12 @@ case.
 - If a direct-download artifact has no checksum, document the exception in
   `SECURITY.md`.
 - `install.sh --dry-run` must not write files or mutate local state.
+- `install.sh` never prompts: `--yes` (implied without a TTY) and
+  `--no-packages` must keep working, and a second run must change nothing.
+- On a provisioned host, `.bashrc` sources `~/.bash.eba` first and every tool
+  init skips what it already set up; never initialise mise, starship,
+  completion or direnv twice. Leave a host-managed mise config (regular
+  `config.toml` with `mise.lock` beside it) alone.
 
 ## Key Files
 

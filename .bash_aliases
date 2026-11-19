@@ -60,7 +60,7 @@ fi
 
 # Navigation
 alias up="cd .."                   # go up one directory
-alias g="z"                        # zoxide jump (short alias)
+declare -F g >/dev/null || alias g="z"  # zoxide jump (short alias; keeps a g() bookmark function)
 alias cls="clear;lsm"             # clear screen + detailed listing
 
 # ── 2. System ────────────────────────────────────────────────────────

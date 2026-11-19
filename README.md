@@ -9,16 +9,57 @@ Security policy: see `SECURITY.md`.
 ```bash
 git clone https://github.com/<your-username>/dotfiles.git ~/dev/dotfiles
 cd ~/dev/dotfiles
-./install.sh            # install packages, symlink configs, set up templates
-./install.sh --dry-run   # preview without changing anything
+./install.sh                      # install packages, symlink configs, set up templates
+./install.sh --dry-run            # preview without changing anything
+./install.sh --yes --no-packages  # non-interactive; links and local config only
 ```
+
+| Option | Effect |
+|--------|--------|
+| `--dry-run` | Print what would change; write nothing |
+| `--yes`, `-y` | Never prompt. Implied when stdin/stdout is not a terminal (`ssh host cmd`, Ansible, CI); `sudo` then runs as `sudo -n` and fails instead of asking for a password |
+| `--no-packages` | Skip every install (brew, apt/dnf, release downloads, fonts, `mise install`, npm) and `sudo`; only link dotfiles, configure Git and copy templates |
 
 The install script will:
 
 1. **Install packages** -- `brew bundle` on macOS; `apt`/`dnf`, pinned release installs, and selected npm CLI tools on Linux
-2. **Symlink dotfiles** -- 18 config files linked from the repo into `~`
-3. **Configure git** -- credential helper and GPG program set per platform (in `~/.gitconfig.local`)
+2. **Symlink dotfiles** -- 18 config files linked from the repo into `~` (an existing regular file is first copied to `~/.dotfiles-backup-<timestamp>/`, keeping its path)
+3. **Configure git** -- credential helper, GPG program, signing and pager set per machine (in `~/.gitconfig.local`)
 4. **Copy templates** -- `~/.secrets`, `~/.bash_local`, `~/.bash_functions`, and `~/.irbrc.local` created from templates (never overwritten)
+
+The script is idempotent: a second run links nothing, backs up nothing, leaves
+`~/.gitconfig.local` and generated completions untouched, and exits 0. It exits
+non-zero when a step fails (an optional tool install failing is reported in the
+summary after everything else has run).
+
+### Provisioned hosts
+
+On a host whose provisioning already set up the shell (for example a managed
+Linux workstation), run it as the host's user with:
+
+```bash
+cd /path/to/dotfiles && ./install.sh --yes --no-packages
+```
+
+- **Host environment.** `.bashrc` sources `~/.bash.eba` when it exists, before
+  anything else and in every bash (interactive or not), so the host's PATH, mise,
+  prompt, completion and helpers still load. Each tool `.bashrc` initialises
+  afterwards (mise, direnv, starship, bash-completion, zoxide, fzf, atuin, aws
+  and generated completions) is skipped when that file already set it up.
+  On Linux `.bashrc` also loads `/etc/bashrc`, as the distribution's own does.
+- **Host-managed mise.** When `~/.config/mise/config.toml` is a regular file with
+  a `mise.lock` beside it, the provisioning owns the global mise config: the
+  installer does not link dotfiles' mise config and does not run `mise install`
+  or the npm CLI installs.
+- **Tools already present stay.** Without `--no-packages`, every package and
+  pinned tool is skipped when its command is already on PATH (the installer adds
+  `~/.local/bin` and mise's shims to PATH first), so a host-installed version is
+  never replaced. dnf/apt packages missing from every enabled repository are
+  skipped with a note (on EL10: `mysql` comes from `mysql8.4`; `eza` and
+  `tealdeer` have no package; fzf, fd, bat, ripgrep, git-delta and gh need EPEL).
+- **Git.** An existing `~/.git-credentials` keeps working: on Linux the `store`
+  helper comes first. Commits and tags are signed only when a GPG secret key
+  exists. `core.pager` is `hunk pager`, else `delta`, else Git's default.
 
 ## Tools
 
@@ -143,7 +184,9 @@ Shell loads in this order:
   -> brew shellenv                    #   Homebrew paths (macOS/Linuxbrew)
   -> ~/.secrets                       #   API tokens, credentials (chmod 600)
   -> .bashrc                          #   interactive shell config
-       -> shell options               #     cdspell, globstar, nocaseglob, ...
+       -> /etc/bashrc (Linux)         #     distribution defaults
+       -> ~/.bash.eba (when present)  #     provisioned host environment
+       -> shell options, history      #     cdspell, globstar, nocaseglob, ...
        -> starship                    #     prompt
        -> bash-completion             #     tab completion
        -> zoxide                      #     z: jump, zi: interactive picker
@@ -167,7 +210,7 @@ Shell loads in this order:
 | `nocaseglob` | Case-insensitive pathname expansion |
 | `cmdhist` | Save multi-line commands as one history entry |
 
-**History** (`.bash_profile`):
+**History** (`.bashrc`, after the host environment so these values win):
 
 | Setting | Value |
 |---------|-------|
@@ -299,8 +342,13 @@ Configured in `.gitconfig` with Hunk as the pager.
 | `transfer.fsckObjects` | Verify object integrity |
 
 **Credentials:** Set per-platform by `install.sh` into `~/.gitconfig.local`.
-Git Credential Manager is preferred when installed, with osxkeychain on macOS
-and libsecret/cache on Linux as fallbacks. Set `DOTFILES_GITHUB_USERNAME` before
+On Linux an existing `~/.git-credentials` keeps working (`store` first). Git
+Credential Manager is preferred when installed, with osxkeychain on macOS
+and libsecret/cache on Linux as fallbacks.
+
+**Signing and pager:** `install.sh` sets `commit.gpgsign`/`tag.gpgsign` to
+`true` only when GPG has a secret key (rerun it after adding one), and
+`core.pager` to `hunk pager`, else `delta`, else Git's default. Set `DOTFILES_GITHUB_USERNAME` before
 install to write a GitHub-specific username into local config.
 
 **Aliases** (35+):
@@ -750,9 +798,9 @@ All dotfiles detect and adapt to the current platform.
 | `ls` colors | `-G` | `-G` | `--color=auto` | `--color=auto` |
 | Ports | `lsof` | `lsof` | `ss` | `ss` |
 | File manager | `open .` | `open .` | `xdg-open .` | `xdg-open .` |
-| FZF path | `/opt/homebrew/opt/fzf` | `/usr/local/opt/fzf` | `/usr/share/doc/fzf` | `/usr/share/doc/fzf` |
+| FZF path | `/opt/homebrew/opt/fzf` | `/usr/local/opt/fzf` | `/usr/share/doc/fzf` or `/usr/share/fzf` | `/usr/share/doc/fzf` or `/usr/share/fzf` |
 
-**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux): `install.sh` installs base packages via apt/dnf, then installs mise which manages ruby, node, python, starship, atuin, zoxide, lazygit, and lazydocker. For other tools not in distro repos, it installs pinned release binaries, plus Hunk, Claude Code, and Codex CLI through npm after mise provisions Node. Checksums are verified when upstream publishes them; documented exceptions live in `SECURITY.md`.
+**Linux** (Ubuntu/Debian, Fedora/RHEL/AlmaLinux 9 and 10): `install.sh` installs the base packages apt/dnf offers (skipping ones already on PATH or in no enabled repository; it adds no repository except GitHub's for `gh` when none carries it), then installs mise which manages ruby, node, python, starship, atuin, zoxide, lazygit, and lazydocker. For other tools not in distro repos, it installs pinned release binaries, plus Hunk, Claude Code, and Codex CLI through npm after mise provisions Node. Checksums are verified when upstream publishes them; documented exceptions live in `SECURITY.md`.
 
 Pinned direct-download tools are defined near the top of `install.sh`.
 
@@ -761,8 +809,10 @@ Pinned direct-download tools are defined near the top of `install.sh`.
 Run these before committing installer or documentation changes:
 
 ```bash
-rtk bash -n install.sh test/dry-run.sh .bash_profile .bashrc .bash_aliases .bash_local.template .bash_functions.template
+rtk bash -n install.sh test/dry-run.sh test/idempotence.sh .bash_profile .bashrc .bash_aliases .bash_local.template .bash_functions.template
+shellcheck install.sh test/*.sh
 rtk test/dry-run.sh
+rtk test/idempotence.sh
 rtk npx --yes cspell --no-progress --gitignore --dot "**/*"
 HOMEBREW_NO_AUTO_UPDATE=1 rtk brew bundle check --file=Brewfile --verbose
 ```

@@ -21,10 +21,13 @@ Security review focus areas:
 - If upstream does not publish checksums for a release artifact, keep the version pinned, use HTTPS, and document the exception in this file.
 - `--dry-run` must not write files or mutate local state.
 - Platform-specific mutable settings belong in machine-local files (`~/.gitconfig.local`), not tracked dotfiles.
+- Never prompt: non-interactive runs (`--yes`, or no TTY) use `sudo -n`; `--no-packages` performs no installs, downloads or `sudo`.
+- Do not replace a tool the host already provides (command on PATH) or link over a host-managed mise config (regular `config.toml` with `mise.lock` beside it).
+- Do not add package repositories, except GitHub's `gh` repository when no enabled repository carries `gh`.
 
-Current checksum exceptions:
+Current checksum exceptions (the IosevkaTerm Nerd Font archive is now checked
+against GitHub's published asset digest):
 
-- IosevkaTerm Nerd Font archive from `ryanoasis/nerd-fonts`; upstream does not publish per-font checksums.
 - `procs` Linux zip from `dalance/procs`; upstream does not publish release checksums.
 
 Current npm-managed CLI installs:

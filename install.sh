@@ -4,19 +4,36 @@ set -euo pipefail
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$HOME/.dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
 DRY_RUN=false
+ASSUME_YES=false
+INSTALL_PACKAGES=true
 BACKED_UP=0
 LINKED=0
 SKIPPED=0
+FAILED=()
+
+# Non-interactive when asked (--yes) or when there is no terminal (ssh host
+# cmd, Ansible, CI). Nothing below prompts; sudo then runs with -n so a
+# password prompt fails fast instead of hanging.
+[[ -t 0 && -t 1 ]] || ASSUME_YES=true
 
 # Pinned Linux release artifacts. Keep these explicit so installer behavior is
 # reproducible and reviewable; do not resolve "latest" at install time.
-MISE_VERSION="2026.5.10"
-GLAB_VERSION="1.97.0"
+MISE_VERSION="2026.10.25"
+GLAB_VERSION="1.131.0"
 SMUG_VERSION="0.3.17"
-NERD_FONT_VERSION="v3.4.0"
+NERD_FONT_VERSION="v3.5.1"
+# GitHub's published digest for IosevkaTerm.tar.xz at NERD_FONT_VERSION.
+NERD_FONT_SHA256="054a4a369cdcc5d57e9bc91ea56dfefd66c71c253dcb0c0d7b72c0810373da26"
 TEALDEER_VERSION="1.8.1"
 PROCS_VERSION="0.14.11"
-SOPS_VERSION="3.13.1"
+SOPS_VERSION="3.13.3"
+
+# Tools installed under ~/.local/bin and mise's shims count as installed even
+# when the caller's PATH (ssh host cmd, Ansible) does not list them yet.
+for dir in "${MISE_DATA_DIR:-$HOME/.local/share/mise}/shims" "$HOME/.local/bin"; do
+  [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]] && PATH="$dir:$PATH"
+done
+export PATH
 
 # Detect platform
 OS="$(uname -s)"    # Darwin or Linux
@@ -61,17 +78,51 @@ usage() {
   echo "Usage: install.sh [OPTIONS]"
   echo ""
   echo "Options:"
-  echo "  --dry-run    Show what would be done without making changes"
-  echo "  --help       Show this help message"
+  echo "  --dry-run       Show what would be done without making changes"
+  echo "  --yes, -y       Non-interactive: never prompt (implied without a TTY)"
+  echo "  --no-packages   Skip every package and tool install (brew, apt/dnf,"
+  echo "                  release downloads, fonts, mise install, npm) and sudo;"
+  echo "                  only link dotfiles and write local config"
+  echo "  --help          Show this help message"
+}
+
+# sudo that never prompts in non-interactive runs.
+run_sudo() {
+  if $ASSUME_YES; then sudo -n "$@"; else sudo "$@"; fi
+}
+
+# Run an optional install step; record a failure instead of aborting, so the
+# rest of the install still happens and the exit status reports it.
+# The step runs in a subshell with errexit on (a function called from an
+# `if` would run with errexit off and carry on past a failed checksum).
+optional() {
+  local name="$1" rc; shift
+  set +e
+  (set -e; "$@")
+  rc=$?
+  set -e
+  if [[ $rc -ne 0 ]]; then
+    echo "  FAILED: $name (exit $rc)" >&2
+    FAILED+=("$name")
+  fi
 }
 
 backup() {
-  local target="$1"
+  local target="$1" rel
   if [[ -e "$target" && ! -L "$target" ]]; then
-    mkdir -p "$BACKUP_DIR"
-    cp -a "$target" "$BACKUP_DIR/"
+    rel="${target#"$HOME"/}"
+    mkdir -p "$BACKUP_DIR/$(dirname "$rel")"
+    cp -a "$target" "$BACKUP_DIR/$rel"
     BACKED_UP=$((BACKED_UP + 1))
   fi
+}
+
+# A global mise config that is a regular file with a mise.lock beside it is
+# owned by the host's provisioning (dotfiles never writes a lock there).
+# Leave it alone: no link, no `mise install` from dotfiles' tool list.
+mise_config_managed() {
+  local cfg="$HOME/.config/mise/config.toml"
+  [[ -f "$cfg" && ! -L "$cfg" && -f "$HOME/.config/mise/mise.lock" ]]
 }
 
 link_file() {
@@ -101,6 +152,22 @@ link_file() {
   LINKED=$((LINKED + 1))
 }
 
+# Set a key in ~/.gitconfig.local only when its values differ (reruns leave
+# the file untouched). Several values set a multi-valued key in that order;
+# no value removes the key.
+git_local_set() {
+  local file="$1" key="$2"; shift 2
+  local want have value
+  want="$(printf '%s\n' "$@")"
+  have="$(git config --file "$file" --get-all "$key" 2>/dev/null || true)"
+  [[ $# -eq 0 ]] && want=""
+  [[ "$have" == "$want" ]] && return 0
+  git config --file "$file" --unset-all "$key" >/dev/null 2>&1 || true
+  for value in "$@"; do
+    git config --file "$file" --add "$key" "$value"
+  done
+}
+
 # Configure git credential helper and GPG per platform
 # Writes to ~/.gitconfig.local (included by .gitconfig) to avoid
 # mutating the symlinked tracked .gitconfig with machine-specific values.
@@ -114,8 +181,13 @@ configure_platform() {
     return
   fi
 
-  # Git credential helper
-  git config --file "$git_local" --unset-all credential.helper >/dev/null 2>&1 || true
+  # Git credential helper. An existing ~/.git-credentials (written by the
+  # host's provisioning or by the user) stays in use: `store` goes first.
+  # The leading empty value drops helpers inherited from system config.
+  local helpers=("")
+  if [[ $OS == "Linux" && -f "$HOME/.git-credentials" ]]; then
+    helpers+=(store)
+  fi
 
   local gcm_path
   gcm_path="$(command -v git-credential-manager 2>/dev/null || true)"
@@ -124,58 +196,80 @@ configure_platform() {
   fi
 
   if [[ -n "$gcm_path" ]]; then
-    git config --file "$git_local" credential.helper ""
-    git config --file "$git_local" --add credential.helper "$gcm_path"
+    helpers+=("$gcm_path")
   else
     case $OS in
       Darwin)
-        git config --file "$git_local" credential.helper osxkeychain
+        helpers+=(osxkeychain)
         ;;
       Linux)
         if [[ -x /usr/lib/git-core/git-credential-libsecret ]] || \
            [[ -x /usr/libexec/git-core/git-credential-libsecret ]]; then
-          git config --file "$git_local" credential.helper libsecret
-        else
-          git config --file "$git_local" credential.helper 'cache --timeout=3600'
+          helpers+=(libsecret)
+        elif [[ ! -f "$HOME/.git-credentials" ]]; then
+          helpers+=('cache --timeout=3600')
           echo "  Note: install libsecret for persistent credential storage"
         fi
         ;;
     esac
   fi
-  echo "  credential.helper = $(git config --file "$git_local" --get-all credential.helper | paste -sd ', ' -)"
+  git_local_set "$git_local" credential.helper "${helpers[@]}"
+  echo "  credential.helper = $(printf '%s\n' "${helpers[@]}" | grep . | paste -sd ',' -)"
 
   if [[ -n "${DOTFILES_GITHUB_USERNAME:-}" ]]; then
-    git config --file "$git_local" credential.https://github.com.username "$DOTFILES_GITHUB_USERNAME"
+    git_local_set "$git_local" credential.https://github.com.username "$DOTFILES_GITHUB_USERNAME"
     echo "  credential.https://github.com.username = $DOTFILES_GITHUB_USERNAME"
   fi
 
   # Default branch name
-  git config --file "$git_local" init.defaultBranch master
+  git_local_set "$git_local" init.defaultBranch master
   echo "  init.defaultBranch = $(git config --file "$git_local" init.defaultBranch)"
 
-  # GPG program
-  local gpg_path
+  # GPG program and signing: sign commits and tags only when a secret key
+  # exists, so a plain `git commit` works on a host without one.
+  local gpg_path signing=false
   gpg_path="$(command -v gpg 2>/dev/null || true)"
   if [[ -n "$gpg_path" ]]; then
-    git config --file "$git_local" gpg.program "$gpg_path"
+    git_local_set "$git_local" gpg.program "$gpg_path"
     echo "  gpg.program = $gpg_path"
+    if [[ -n "${DOTFILES_GIT_SIGNINGKEY:-}" ]] || \
+       [[ -n "$("$gpg_path" --batch --list-secret-keys 2>/dev/null)" ]]; then
+      signing=true
+    fi
   else
-    echo "  GPG not found — signing disabled until installed"
+    git_local_set "$git_local" gpg.program
   fi
+  git_local_set "$git_local" commit.gpgsign "$signing"
+  git_local_set "$git_local" tag.gpgsign "$signing"
+  if $signing; then
+    echo "  commit.gpgsign = true (GPG secret key found)"
+  else
+    echo "  commit.gpgsign = false (no GPG secret key; rerun install.sh after adding one)"
+  fi
+
+  # Pager: Hunk when installed, else delta, else Git's default.
+  if installed hunk; then
+    git_local_set "$git_local" core.pager "hunk pager"
+  elif installed delta; then
+    git_local_set "$git_local" core.pager delta
+  else
+    git_local_set "$git_local" core.pager
+  fi
+  echo "  core.pager = $(git config --file "$git_local" core.pager || echo "(git default)")"
 
   # Optional user identity from environment (avoids hardcoded identity in tracked config)
   if [[ -n "${DOTFILES_GIT_NAME:-}" ]]; then
-    git config --file "$git_local" user.name "$DOTFILES_GIT_NAME"
+    git_local_set "$git_local" user.name "$DOTFILES_GIT_NAME"
     echo "  user.name = $DOTFILES_GIT_NAME"
   fi
 
   if [[ -n "${DOTFILES_GIT_EMAIL:-}" ]]; then
-    git config --file "$git_local" user.email "$DOTFILES_GIT_EMAIL"
+    git_local_set "$git_local" user.email "$DOTFILES_GIT_EMAIL"
     echo "  user.email = $DOTFILES_GIT_EMAIL"
   fi
 
   if [[ -n "${DOTFILES_GIT_SIGNINGKEY:-}" ]]; then
-    git config --file "$git_local" user.signingkey "$DOTFILES_GIT_SIGNINGKEY"
+    git_local_set "$git_local" user.signingkey "$DOTFILES_GIT_SIGNINGKEY"
     echo "  user.signingkey = $DOTFILES_GIT_SIGNINGKEY"
   fi
 
@@ -228,50 +322,87 @@ download_verified() {
   verify_sha256 "$dest" "$expected"
 }
 
-install_apt_packages() {
-  echo "Installing base packages (apt)..."
-  sudo apt-get update -qq
-  sudo apt-get install -y -qq \
-    bash bash-completion git git-lfs gnupg vim htop tmux wget fzf \
-    fd-find curl bat ripgrep jq yq default-mysql-client postgresql-client
+# Base packages: "package[|alternative...]:command". A package is skipped when
+# its command is already on PATH (for example a mise-managed tmux or yq from
+# the host's provisioning, which must keep its version), when it is already
+# installed, or when no enabled repository offers it (EL10 drops some names;
+# EPEL may be absent). The first available alternative wins.
+APT_PACKAGES=(
+  bash:bash bash-completion:- git:git git-lfs:git-lfs gnupg:gpg vim:vim htop:htop
+  tmux:tmux wget:wget fzf:fzf fd-find:fd curl:curl bat:bat ripgrep:rg jq:jq yq:yq
+  default-mysql-client:mysql postgresql-client:psql git-delta:delta
+)
+DNF_PACKAGES=(
+  bash:bash bash-completion:- git:git git-lfs:git-lfs gnupg2:gpg vim-enhanced:vim
+  htop:htop tmux:tmux wget:wget fzf:fzf fd-find:fd curl:curl bat:bat ripgrep:rg
+  jq:jq yq:yq "mysql|mysql8.4:mysql" postgresql:psql git-delta:delta
+)
 
-  # fd is installed as fdfind on Debian/Ubuntu — symlink to fd
+pkg_installed() {
+  case $PKG_MGR in
+    apt) dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed" ;;
+    dnf) rpm -q --whatprovides "$1" &>/dev/null ;;
+  esac
+}
+
+pkg_available() {
+  case $PKG_MGR in
+    apt) [[ -n "$(apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ && $2 != "(none)" { print $2 }')" ]] ;;
+    dnf) [[ -n "$(dnf -q repoquery --available --latest-limit 1 "$1" 2>/dev/null)" ]] ;;
+  esac
+}
+
+# Prints the packages to install, one per line; skip notes go to stderr.
+missing_packages() {
+  local entry names cmd name chosen
+  for entry in "$@"; do
+    names="${entry%%:*}" cmd="${entry##*:}" chosen=""
+    if [[ "$cmd" != "-" ]] && installed "$cmd"; then continue; fi
+    for name in ${names//|/ }; do
+      if pkg_installed "$name"; then chosen="-"; break; fi
+    done
+    [[ "$chosen" == "-" ]] && continue
+    for name in ${names//|/ }; do
+      if pkg_available "$name"; then chosen="$name"; break; fi
+    done
+    if [[ -n "$chosen" ]]; then
+      echo "$chosen"
+    else
+      echo "  Skipping ${names//|/ or } — not in any enabled repository" >&2
+    fi
+  done
+}
+
+install_base_packages() {
+  echo "Installing base packages ($PKG_MGR)..."
+  local packages=()
+  [[ $PKG_MGR == "apt" ]] && run_sudo apt-get update -qq
+  if [[ $PKG_MGR == "apt" ]]; then
+    mapfile -t packages < <(missing_packages "${APT_PACKAGES[@]}")
+  else
+    mapfile -t packages < <(missing_packages "${DNF_PACKAGES[@]}")
+  fi
+
+  if [[ ${#packages[@]} -eq 0 ]]; then
+    echo "  All base packages present"
+  elif [[ $PKG_MGR == "apt" ]]; then
+    echo "  Installing: ${packages[*]}"
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${packages[@]}"
+  else
+    echo "  Installing: ${packages[*]}"
+    run_sudo dnf install -y -q "${packages[@]}"
+  fi
+
+  # fd and bat use other names on Debian/Ubuntu
   if command -v fdfind &>/dev/null && ! command -v fd &>/dev/null; then
     mkdir -p "$HOME/.local/bin"
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
     echo "  Symlinked fdfind -> fd"
   fi
-
-  # bat is installed as batcat on Debian/Ubuntu — symlink to bat
   if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
     mkdir -p "$HOME/.local/bin"
     ln -sf "$(command -v batcat)" "$HOME/.local/bin/bat"
     echo "  Symlinked batcat -> bat"
-  fi
-
-  # git-delta (available in Ubuntu 24.04+, Debian 13+)
-  if ! installed delta; then
-    if apt-cache show git-delta &>/dev/null 2>&1; then
-      sudo apt-get install -y -qq git-delta
-    else
-      echo "  Skipping delta — no distro package and upstream release has no checksum file"
-    fi
-  fi
-}
-
-install_dnf_packages() {
-  echo "Installing base packages (dnf)..."
-  sudo dnf install -y -q \
-    bash bash-completion git git-lfs gnupg2 vim-enhanced htop tmux wget fzf \
-    fd-find curl bat ripgrep jq yq mysql postgresql
-
-  # git-delta
-  if ! installed delta; then
-    if dnf info git-delta &>/dev/null 2>&1; then
-      sudo dnf install -y -q git-delta
-    else
-      echo "  Skipping delta — no distro package and upstream release has no checksum file"
-    fi
   fi
 }
 
@@ -280,35 +411,34 @@ install_gh() {
   echo "  Installing gh (GitHub CLI)..."
 
   if [[ $PKG_MGR == "apt" ]]; then
-    sudo mkdir -p -m 755 /etc/apt/keyrings
+    run_sudo mkdir -p -m 755 /etc/apt/keyrings
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-      | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
-    sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+      | run_sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg >/dev/null
+    run_sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-      | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq gh
+      | run_sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+    run_sudo apt-get update -qq
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh
   elif [[ $PKG_MGR == "dnf" ]]; then
-    sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null \
-      || sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null
-    sudo dnf install -y -q gh
+    # EPEL 10 carries gh; add GitHub's repository only when no enabled one does.
+    if ! pkg_available gh; then
+      run_sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null \
+        || run_sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo 2>/dev/null
+    fi
+    run_sudo dnf install -y -q gh
   fi
 }
 
 install_glab() {
   if installed glab; then return; fi
-  echo "  Installing glab (GitLab CLI)..."
+  echo "  Installing glab ${GLAB_VERSION} (GitLab CLI)..."
 
-  if [[ $PKG_MGR == "dnf" ]]; then
-    sudo dnf install -y -q glab 2>/dev/null && return
-  fi
-
-  # Fallback: install from GitLab release binary
+  # Pinned release binary (distro packages lag behind the pin)
   local arch_suffix
   case $ARCH in
     x86_64)        arch_suffix="amd64" ;;
     aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for glab: $ARCH"; return ;;
+    *) echo "  Unsupported arch for glab: $ARCH"; return 0 ;;
   esac
 
   local tmp
@@ -320,7 +450,7 @@ install_glab() {
     "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/checksums.txt" \
     "$artifact"
   tar -xzf "$tmp/glab.tar.gz" -C "$tmp"
-  sudo install -m 755 "$tmp/bin/glab" /usr/local/bin/glab
+  run_sudo install -m 755 "$tmp/bin/glab" /usr/local/bin/glab
   rm -rf "$tmp"
 }
 
@@ -332,7 +462,7 @@ install_mise() {
   case $ARCH in
     x86_64)        arch_suffix="x64" ;;
     aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for mise: $ARCH"; return ;;
+    *) echo "  Unsupported arch for mise: $ARCH"; return 0 ;;
   esac
 
   local artifact="mise-v${MISE_VERSION}-linux-${arch_suffix}"
@@ -356,7 +486,7 @@ install_smug() {
   case $ARCH in
     x86_64)        arch_suffix="x86_64" ;;
     aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for smug: $ARCH"; return ;;
+    *) echo "  Unsupported arch for smug: $ARCH"; return 0 ;;
   esac
 
   local tmp
@@ -368,7 +498,7 @@ install_smug() {
     "https://github.com/ivaaaan/smug/releases/download/v${SMUG_VERSION}/checksums.txt" \
     "$artifact"
   tar -xzf "$tmp/smug.tar.gz" -C "$tmp"
-  sudo install -m 755 "$tmp/smug" /usr/local/bin/smug
+  run_sudo install -m 755 "$tmp/smug" /usr/local/bin/smug
   rm -rf "$tmp"
 }
 
@@ -381,11 +511,10 @@ install_nerd_font() {
 
   local tmp
   tmp=$(mktemp -d /tmp/nerd-font-XXXX)
-  # Nerd Fonts does not publish checksums for per-font archives. Keep the
-  # version pinned and install over HTTPS; this exception is documented in
-  # SECURITY.md.
+  # Pinned archive, checked against GitHub's published asset digest.
   curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_VERSION}/IosevkaTerm.tar.xz" \
     -o "$tmp/IosevkaTerm.tar.xz"
+  verify_sha256 "$tmp/IosevkaTerm.tar.xz" "$NERD_FONT_SHA256" || { rm -rf "$tmp"; return 1; }
   mkdir -p "$font_dir"
   tar -xJf "$tmp/IosevkaTerm.tar.xz" -C "$font_dir"
   rm -rf "$tmp"
@@ -398,33 +527,24 @@ install_nerd_font() {
 install_eza() {
   if installed eza; then return; fi
 
-  # eza requires a newer glibc than RHEL 9 / AlmaLinux 9 / Rocky 9 ship
-  if [[ -f /etc/os-release ]]; then
-    local distro_id
-    distro_id=$(. /etc/os-release && echo "${ID:-}")
-    local distro_like
-    distro_like=$(. /etc/os-release && echo "${ID_LIKE:-}")
-    if [[ "$distro_id" =~ ^(rhel|almalinux|rocky|centos)$ ]] || \
-       [[ "$distro_like" =~ rhel ]]; then
-      echo "  Skipping eza — glibc too old on RHEL/AlmaLinux/Rocky"
-      return
-    fi
-  fi
-
-  echo "  Installing eza..."
-
   if [[ $PKG_MGR == "apt" ]]; then
+    echo "  Installing eza..."
     # eza has an official apt repo
-    sudo mkdir -p /etc/apt/keyrings
+    run_sudo mkdir -p /etc/apt/keyrings
     curl -fsSL https://raw.githubusercontent.com/eza-community/eza/main/deb.asc \
-      | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg 2>/dev/null
+      | run_sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/gierens.gpg
     echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" \
-      | sudo tee /etc/apt/sources.list.d/gierens.list >/dev/null
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq eza
+      | run_sudo tee /etc/apt/sources.list.d/gierens.list >/dev/null
+    run_sudo apt-get update -qq
+    run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq eza
   elif [[ $PKG_MGR == "dnf" ]]; then
-    sudo dnf install -y -q eza 2>/dev/null && return
-    echo "  eza not in dnf repos — install manually or via cargo"
+    # Fedora and some EPEL releases carry eza; EL10/EPEL 10 does not.
+    if pkg_available eza; then
+      echo "  Installing eza..."
+      run_sudo dnf install -y -q eza
+    else
+      echo "  Skipping eza — not in any enabled repository (ls stays the default)"
+    fi
   fi
 }
 
@@ -434,14 +554,14 @@ install_tealdeer() {
 
   if [[ $PKG_MGR == "apt" ]]; then
     # tealdeer available in Ubuntu 22.04+
-    if apt-cache show tealdeer &>/dev/null 2>&1; then
-      sudo apt-get install -y -qq tealdeer
+    if pkg_available tealdeer; then
+      run_sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq tealdeer
     else
       install_tealdeer_from_release
     fi
   elif [[ $PKG_MGR == "dnf" ]]; then
-    if dnf info tealdeer &>/dev/null 2>&1; then
-      sudo dnf install -y -q tealdeer
+    if pkg_available tealdeer; then
+      run_sudo dnf install -y -q tealdeer
     else
       install_tealdeer_from_release
     fi
@@ -453,7 +573,7 @@ install_tealdeer_from_release() {
   case $ARCH in
     x86_64)        arch_suffix="x86_64" ;;
     aarch64|arm64) arch_suffix="aarch64" ;;
-    *) echo "  Unsupported arch for tealdeer: $ARCH"; return ;;
+    *) echo "  Unsupported arch for tealdeer: $ARCH"; return 0 ;;
   esac
 
   local artifact="tealdeer-linux-${arch_suffix}-musl"
@@ -474,7 +594,7 @@ install_procs() {
   case $ARCH in
     x86_64)        arch_suffix="x86_64" ;;
     aarch64|arm64) arch_suffix="aarch64" ;;
-    *) echo "  Unsupported arch for procs: $ARCH"; return ;;
+    *) echo "  Unsupported arch for procs: $ARCH"; return 0 ;;
   esac
 
   local tmp
@@ -484,7 +604,7 @@ install_procs() {
   curl -fsSL "https://github.com/dalance/procs/releases/download/v${PROCS_VERSION}/procs-v${PROCS_VERSION}-${arch_suffix}-linux.zip" \
     -o "$tmp/procs.zip"
   unzip -qo "$tmp/procs.zip" -d "$tmp"
-  sudo install -m 755 "$tmp/procs" /usr/local/bin/procs
+  run_sudo install -m 755 "$tmp/procs" /usr/local/bin/procs
   rm -rf "$tmp"
 }
 
@@ -496,7 +616,7 @@ install_sops() {
   case $ARCH in
     x86_64)        arch_suffix="amd64" ;;
     aarch64|arm64) arch_suffix="arm64" ;;
-    *) echo "  Unsupported arch for sops: $ARCH"; return ;;
+    *) echo "  Unsupported arch for sops: $ARCH"; return 0 ;;
   esac
 
   local artifact="sops-v${SOPS_VERSION}.linux.${arch_suffix}"
@@ -507,7 +627,7 @@ install_sops() {
     "$tmp/sops" \
     "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.checksums.txt" \
     "$artifact"
-  sudo install -m 755 "$tmp/sops" /usr/local/bin/sops
+  run_sudo install -m 755 "$tmp/sops" /usr/local/bin/sops
   rm -rf "$tmp"
 }
 
@@ -554,25 +674,22 @@ install_linux_packages() {
     return
   fi
 
-  # Base packages from distro repos
-  if [[ $PKG_MGR == "apt" ]]; then
-    install_apt_packages
-  elif [[ $PKG_MGR == "dnf" ]]; then
-    install_dnf_packages
-  fi
+  # Base packages from distro repos (a failure here is fatal)
+  install_base_packages
 
-  # Tools that need special installation
+  # Tools that need special installation. Each skips a tool already on PATH,
+  # so tools the host provisions (for example through mise) keep their version.
   echo ""
   echo "Installing CLI tools..."
-  install_mise
-  install_gh
-  install_glab
-  install_smug
-  install_eza
-  install_tealdeer
-  install_procs
-  install_sops
-  install_nerd_font
+  optional mise install_mise
+  optional gh install_gh
+  optional glab install_glab
+  optional smug install_smug
+  optional eza install_eza
+  optional tealdeer install_tealdeer
+  optional procs install_procs
+  optional sops install_sops
+  optional nerd-font install_nerd_font
 
   echo ""
   echo "Package installation complete."
@@ -585,21 +702,38 @@ install_linux_packages() {
 # Parse arguments
 for arg in "$@"; do
   case $arg in
-    --dry-run) DRY_RUN=true ;;
-    --help)    usage; exit 0 ;;
-    *)         echo "Unknown option: $arg"; usage; exit 1 ;;
+    --dry-run)     DRY_RUN=true ;;
+    --yes|-y)      ASSUME_YES=true ;;
+    --no-packages) INSTALL_PACKAGES=false ;;
+    --help|-h)     usage; exit 0 ;;
+    *)             echo "Unknown option: $arg" >&2; usage >&2; exit 1 ;;
   esac
 done
+
+if $ASSUME_YES; then
+  export MISE_YES=1 HOMEBREW_NO_ENV_HINTS=1 NONINTERACTIVE=1
+fi
+
+MISE_MANAGED=false
+mise_config_managed && MISE_MANAGED=true
 
 echo "Dotfiles installer"
 echo "  Source:   $DOTFILES"
 echo "  Target:   $HOME"
 echo "  Platform: $OS/$ARCH"
 $DRY_RUN && echo "  Mode:     DRY RUN"
+$ASSUME_YES && echo "  Prompts:  none (non-interactive)"
+$INSTALL_PACKAGES || echo "  Packages: skipped (--no-packages)"
+$MISE_MANAGED && echo "  mise:     global config is host-managed (config.toml + mise.lock); left as is"
 echo ""
 
 # Install packages (macOS: brew bundle, Linux: apt/dnf + special installs)
-if ! $DRY_RUN; then
+if $DRY_RUN; then
+  if $INSTALL_PACKAGES; then
+    echo "  [dry-run] Would install packages ($([[ $OS == Darwin ]] && echo "brew bundle" || echo "${PKG_MGR:-none}"))"
+    echo ""
+  fi
+elif $INSTALL_PACKAGES; then
   if [[ $OS == "Darwin" ]]; then
     if command -v brew &>/dev/null; then
       echo "Installing brew packages..."
@@ -620,17 +754,21 @@ done
 # Symlink .config files
 echo "Linking config files..."
 for file in "${CONFIG_FILES[@]}"; do
+  if [[ $file == .config/mise/config.toml ]] && $MISE_MANAGED; then
+    echo "  Skipping ~/$file — host-managed (mise.lock beside it)"
+    continue
+  fi
   link_file "$DOTFILES/$file" "$HOME/$file"
 done
 
 # Install mise-managed tools (config.toml is now symlinked)
-if ! $DRY_RUN && installed mise; then
+if ! $DRY_RUN && $INSTALL_PACKAGES && ! $MISE_MANAGED && installed mise; then
   echo ""
   echo "Installing mise-managed tools..."
-  mise install --yes
+  optional "mise install" mise install --yes
   if [[ $OS == "Linux" ]]; then
-    install_hunk
-    install_ai_cli_tools
+    optional hunk install_hunk
+    optional "AI CLI tools" install_ai_cli_tools
   fi
 fi
 
@@ -638,35 +776,35 @@ fi
 echo ""
 configure_platform
 
-# Generate bash completions for installed tools
+# Write a file only when its content changes (keeps reruns no-ops).
+write_if_changed() {
+  local dest="$1" content="$2"
+  if [[ -f "$dest" && "$(cat "$dest")" == "$content" ]]; then return 0; fi
+  printf '%s\n' "$content" > "$dest"
+}
+
+# Generate bash completions for installed tools. Tools whose completion the
+# host's shell environment already loads are skipped again in .bashrc.
 echo ""
+echo "Generating bash completions..."
 if $DRY_RUN; then
-  echo "Generating bash completions..."
   echo "  [dry-run] Would write completion files under ~/.local/etc/bash_completion.d"
 else
-  echo "Generating bash completions..."
   mkdir -p "$HOME/.local/etc/bash_completion.d"
-
-  if installed glab; then
-    _comp=$(glab completion -s bash 2>/dev/null) \
-      && [[ "$_comp" == *complete* ]] \
-      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/glab.bash" \
-      && echo "  glab" || true
-  fi
-
-  if installed smug; then
-    _comp=$(smug completion bash 2>/dev/null) \
-      && [[ "$_comp" == *complete* ]] \
-      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/smug.bash" \
-      && echo "  smug" || true
-  fi
-
-  if installed gh; then
-    _comp=$(gh completion -s bash 2>/dev/null) \
-      && [[ "$_comp" == *complete* ]] \
-      && printf '%s\n' "$_comp" > "$HOME/.local/etc/bash_completion.d/gh.bash" \
-      && echo "  gh" || true
-  fi
+  # glab and gh write their config on any run; point them at a scratch dir.
+  _comp_cfg="$(mktemp -d)"
+  for tool in glab smug gh; do
+    installed "$tool" || continue
+    case $tool in
+      smug) _comp=$(smug completion bash 2>/dev/null || true) ;;
+      *)    _comp=$(GLAB_CONFIG_DIR="$_comp_cfg" GH_CONFIG_DIR="$_comp_cfg" "$tool" completion -s bash 2>/dev/null || true) ;;
+    esac
+    if [[ "$_comp" == *complete* ]]; then
+      write_if_changed "$HOME/.local/etc/bash_completion.d/$tool.bash" "$_comp"
+      echo "  $tool"
+    fi
+  done
+  rm -rf "$_comp_cfg"
 fi
 
 # Copy templates for files that are NOT symlinked (machine-specific)
@@ -676,16 +814,16 @@ echo "Setting up local config templates..."
 copy_template() {
   local template="$1" dest="$2" mode="${3:-}"
   if [[ -f "$dest" ]]; then
-    echo "  ~/${dest#$HOME/} already exists, skipping"
+    echo "  ~/${dest#"$HOME"/} already exists, skipping"
     return
   fi
   if $DRY_RUN; then
-    echo "  [dry-run] Copy $(basename "$template") -> ~/${dest#$HOME/}"
+    echo "  [dry-run] Copy $(basename "$template") -> ~/${dest#"$HOME"/}"
     return
   fi
   cp "$template" "$dest"
   [[ -n "$mode" ]] && chmod "$mode" "$dest"
-  echo "  Created ~/${dest#$HOME/} from template"
+  echo "  Created ~/${dest#"$HOME"/} from template"
 }
 
 copy_template "$DOTFILES/.secrets.template" "$HOME/.secrets" 600
@@ -698,13 +836,21 @@ echo ""
 echo "Done!"
 echo "  Linked:    $LINKED"
 echo "  Skipped:   $SKIPPED (already correct)"
-[[ $BACKED_UP -gt 0 ]] && echo "  Backed up: $BACKED_UP files -> $BACKUP_DIR"
+if [[ $BACKED_UP -gt 0 ]]; then
+  echo "  Backed up: $BACKED_UP files -> $BACKUP_DIR"
+fi
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  echo "  Failed:    ${FAILED[*]}" >&2
+fi
 echo ""
 
-# Post-install reminders
-echo "Next steps:"
-echo "  vim ~/.bash_local                  # configure for this machine"
-echo "  vim ~/.secrets                     # add your credentials"
-echo "  export DOTFILES_GIT_NAME='Your Name' DOTFILES_GIT_EMAIL='you@example.com'"
-echo "  ./install.sh                       # apply machine-local git identity"
-echo "  gh auth login                      # authenticate GitHub CLI"
+if ! $ASSUME_YES; then
+  echo "Next steps:"
+  echo "  vim ~/.bash_local                  # configure for this machine"
+  echo "  vim ~/.secrets                     # add your credentials"
+  echo "  export DOTFILES_GIT_NAME='Your Name' DOTFILES_GIT_EMAIL='you@example.com'"
+  echo "  ./install.sh                       # apply machine-local git identity"
+  echo "  gh auth login                      # authenticate GitHub CLI"
+fi
+
+[[ ${#FAILED[@]} -eq 0 ]]

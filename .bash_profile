@@ -3,7 +3,7 @@
 # Cross-platform: macOS and Linux
 #
 # File Inventory:
-#   .bash_profile      Login env (brew, PATH, secrets, history)
+#   .bash_profile      Login env (brew, PATH, secrets)
 #   .bashrc            Interactive (shell opts, prompt, completions, tools)
 #   .bash_aliases      Aliases and helper functions
 #   .bash_local        Machine/project-specific config (not in repo)
@@ -17,10 +17,14 @@
 #     -> .secrets
 #     -> .bashrc
 #          -> brew shellenv (non-login shells, if not already set)
+#          -> /etc/bashrc (Linux)
+#          -> ~/.bash.eba (host environment, when present)
 #          -> mise shims (non-interactive only)
 #          -> [non-interactive stops here]
-#          -> shell options (cdspell, globstar, etc.)
+#          -> shell options (cdspell, globstar, etc.), history
 #          -> mise activate (interactive — full hooks)
+#          -> direnv
+#          (each tool initialises once: skipped when ~/.bash.eba already did)
 #          -> starship (prompt)
 #          -> bash-completion
 #          -> zoxide (z: jump, zi: interactive fzf picker)
@@ -46,13 +50,11 @@ fi
 # Locale: Ruby tools expect UTF-8 (LANG only; LC_* settings still win)
 export LANG="${LANG:-en_US.UTF-8}"
 
-# History
-export HISTCONTROL=ignoreboth:erasedups
-export HISTSIZE=100000
-export HISTFILESIZE=200000
-
-# GPG signing
-export GPG_TTY=$(tty)
+# GPG signing (only with a terminal: tty prints "not a tty" otherwise)
+if [[ -t 0 ]]; then
+  GPG_TTY="$(tty)"
+  export GPG_TTY
+fi
 
 # PATH
 export PATH="$HOME/.local/bin:/usr/local/sbin:$PATH"
