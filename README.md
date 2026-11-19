@@ -78,6 +78,23 @@ cd /path/to/dotfiles && ./install.sh --yes --no-packages
   helper comes first. Commits and tags are signed only when a GPG secret key
   exists. `core.pager` is `hunk pager`, else `delta`, else Git's default.
 
+## Branches
+
+| Branch | Use it on | Contents |
+|--------|-----------|----------|
+| `master` | Any machine | The shared base |
+| `dotfiles-eba` | EBA workstations (EBA's Ansible installs from it) | `master` plus EBA-specific behaviour, such as the check that its pins match EBA's (`test/eba-versions.sh`) |
+
+Changes flow one way, `master` → `dotfiles-eba`, by merge; never merge
+`dotfiles-eba` into `master`. Make a change that helps every machine on
+`master`, then sync:
+
+```bash
+git switch master && git pull --ff-only
+git switch dotfiles-eba && git pull --ff-only
+git merge master && git push
+```
+
 ## Tools
 
 ### Shell Experience
