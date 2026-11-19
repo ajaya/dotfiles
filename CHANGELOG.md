@@ -4,6 +4,16 @@ All notable changes to these dotfiles are documented here.
 
 ## Unreleased
 
+### VS Code, fonts, Ghostty
+
+- `vscode/settings.json` (personal keys from the Mac's user settings) and `vscode/extensions.txt` (Catppuccin theme and icons, indent-rainbow, Cucumber autocomplete, YAML sort, path IntelliSense, color highlight, SQL Developer). When `code` is on PATH, install.sh merges the keys into the platform's user settings file (also with `--no-packages`) and installs missing extensions. The merge keeps every other key and comment, reads JSONC, writes nothing when values already match, and never writes the keys EBA's Ansible owns (`rubyLsp.rubyVersionManager`, `hadolint.hadolintPath`, `ansible.python.interpreterPath`, `settingsSync.ignoredSettings`).
+- `redhat.telemetry.enabled` and `sqldeveloper.telemetry.enabled` are `false` in the tracked settings (the Mac had `true`).
+- The external terminal is per platform (`osxExec` Ghostty.app, `linuxExec` ghostty); `git.enableCommitSigning` follows the GPG-key rule used for Git.
+- Linux fonts are user-level and run with `--no-packages` too: Iosevka Nerd Font (VS Code's `editor.fontFamily`) and IosevkaTerm Nerd Font (Ghostty), four base styles each, in `~/.local/share/fonts/<name>NerdFont/`, downloaded into `~/.cache/dotfiles` (not `/tmp`), digest-checked, with a `.sha256` marker for reruns. macOS: `font-iosevka-nerd-font` cask added.
+- Ghostty 1.4.0 on Linux (package path): pinned, digest-checked AppImage from pkgforge-dev in `~/.local/opt/ghostty`, linked as `~/.local/bin/ghostty`, with a desktop entry.
+- Ghostty config documents `shell-integration-features = ssh-env,ssh-terminfo` (additive; checked against Ghostty's reference).
+- Tests point VS Code at the throwaway HOME (`DOTFILES_VSCODE_USER_DIR`, `DOTFILES_VSCODE_EXTENSIONS_DIR`).
+
 ### Command-line clients through mise on every platform
 
 - gh 2.105.0, glab 1.131.0, jira-cli 1.7.0 (`github:ankitpokhrel/jira-cli`), confluence-cli 2.31.2 (`npm:confluence-cli`, pchuri) and AWS CLI 2.41.1 (`aws-cli`) are defined once, in `.config/mise/conf.d/dotfiles-clis.toml`, linked to `~/.config/mise/conf.d/`. aws-cli, jira-cli and glab use EBA's host tool lock versions; gh and confluence-cli their latest release.

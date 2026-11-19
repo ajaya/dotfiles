@@ -30,6 +30,10 @@ mouse-hide-while-typing = true
 # --- Shell ---
 #shell-integration = bash
 #confirm-close-surface = false
+# Additive: unlisted features keep their defaults (cursor, title, path on).
+# ssh-terminfo installs Ghostty's terminfo on hosts it SSHes to (needs tic
+# there); ssh-env falls back to xterm-256color and passes COLORTERM,
+# TERM_PROGRAM, TERM_PROGRAM_VERSION. Both since Ghostty 1.2.0.
 shell-integration-features = ssh-env,ssh-terminfo
 
 # --- Keybindings ---

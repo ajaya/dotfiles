@@ -10,6 +10,8 @@ tmp_home="$(mktemp -d)"
 # hundred MB of downloads on the first run).
 export MISE_DATA_DIR="$tmp_home/.local/share/mise" MISE_CACHE_DIR="$tmp_home/.cache/mise"
 unset MISE_CONFIG_DIR MISE_GLOBAL_CONFIG_FILE MISE_ENV
+# VS Code: settings and extensions in the throwaway HOME, never the real ones.
+export DOTFILES_VSCODE_USER_DIR="$tmp_home/vscode-user" DOTFILES_VSCODE_EXTENSIONS_DIR="$tmp_home/vscode-extensions"
 marker="$(mktemp)"
 log="$(mktemp)"
 
@@ -34,7 +36,9 @@ touch "$marker"
 HOME="$tmp_home" "$repo_root/install.sh" --yes --no-packages </dev/null >"$log" 2>&1 \
   || { cat "$log" >&2; echo "second run failed" >&2; exit 1; }
 
-changed="$(find "$tmp_home" \( -path "$tmp_home/.local/state" -o -path "$tmp_home/.gnupg" -o -path "$tmp_home/.cache" -o -path "$MISE_DATA_DIR" \) -prune \
+changed="$(find "$tmp_home" \( -path "$tmp_home/.local/state" -o -path "$tmp_home/.gnupg" -o -path "$tmp_home/.cache" -o -path "$MISE_DATA_DIR" \
+  -o -path "$DOTFILES_VSCODE_EXTENSIONS_DIR" -o -path "$tmp_home/Library/Application Support/Code" \
+  -o -path "$tmp_home/.config/Code" -o -path "$tmp_home/.vscode" \) -prune \
   -o -newer "$marker" -print)"
 if [[ -n "$changed" ]]; then
   echo "second run changed HOME:" >&2

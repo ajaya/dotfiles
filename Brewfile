@@ -87,6 +87,7 @@ brew "img2pdf"
 brew "qpdf"
 
 # Fonts
+cask "font-iosevka-nerd-font"
 cask "font-iosevka-term-nerd-font"
 cask "font-jetbrains-mono-nerd-font"
 

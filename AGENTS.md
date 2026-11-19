@@ -55,6 +55,8 @@ case.
 | `install.sh` | Cross-platform installer, symlink setup, local template creation |
 | `Brewfile` | macOS Homebrew formulae and casks |
 | `.config/mise/config.toml` | mise-managed tool versions |
+| `vscode/settings.json`, `vscode/extensions.txt` | Personal VS Code keys (merged, never replacing the file) and extensions |
+| `vscode/merge-settings.py` | JSONC-preserving merge of the tracked keys |
 | `.config/mise/conf.d/dotfiles-clis.toml` | gh, glab, jira, confluence, aws (pinned; installed on every machine) |
 | `.bash_profile` | Login shell environment and PATH setup |
 | `.bashrc` | Interactive shell startup |
