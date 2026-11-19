@@ -85,6 +85,15 @@ cd /path/to/dotfiles && ./install.sh --yes --no-packages
 | `master` | Any machine | The shared base |
 | `dotfiles-eba` | EBA workstations (EBA's Ansible installs from it) | `master` plus EBA-specific behaviour, such as the check that its pins match EBA's (`test/eba-versions.sh`) |
 
+On `dotfiles-eba`, `test/eba-versions.sh` compares the branch's pins (mise
+config, the `conf.d` clients, and `install.sh`'s mise, sops and Nerd Fonts
+pins) with EBA's: `.ruby-version` and `mise.toml` of the EBA app, and
+`host_software`'s versions in eba-apps-automation, both read from
+`origin/master` (`--fetch` fetches first; `DOTFILES_EBA_DIR`,
+`DOTFILES_EBA_AUTOMATION_DIR` and `DOTFILES_EBA_REF` override the defaults
+`/opt/apps/dev/eba`, `/opt/apps/dev/eba-apps-automation` and `origin/master`).
+It lists each mismatch and fails, and skips when a checkout is absent.
+
 Changes flow one way, `master` → `dotfiles-eba`, by merge; never merge
 `dotfiles-eba` into `master`. Make a change that helps every machine on
 `master`, then sync:
@@ -849,6 +858,7 @@ rtk bash -n install.sh test/dry-run.sh test/idempotence.sh .bash_profile .bashrc
 shellcheck install.sh test/*.sh
 rtk test/dry-run.sh
 rtk test/idempotence.sh
+test/eba-versions.sh               # dotfiles-eba: pins match EBA origin/master
 rtk npx --yes cspell --no-progress --gitignore --dot "**/*"
 HOMEBREW_NO_AUTO_UPDATE=1 rtk brew bundle check --file=Brewfile --verbose
 ```

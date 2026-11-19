@@ -4,6 +4,11 @@ All notable changes to these dotfiles are documented here.
 
 ## Unreleased
 
+### dotfiles-eba branch
+
+- `dotfiles-eba` is `master` plus EBA-specific behaviour; EBA workstations install from it. Changes flow `master` → `dotfiles-eba` by merge only.
+- `test/eba-versions.sh` checks every pin this branch shares with EBA (ruby, node, python, starship, direnv, lazydocker, aws-cli, glab, jira-cli, mise, sops, Nerd Fonts; gh and confluence-cli once EBA's host lock pins them) against EBA's `origin/master`.
+
 ### Command-line clients through mise on every platform
 
 - gh 2.105.0, glab 1.131.0, jira-cli 1.7.0 (`github:ankitpokhrel/jira-cli`), confluence-cli 2.31.2 (`npm:confluence-cli`, pchuri) and AWS CLI 2.41.1 (`aws-cli`) are defined once, in `.config/mise/conf.d/dotfiles-clis.toml`, linked to `~/.config/mise/conf.d/`. aws-cli, jira-cli and glab use EBA's host tool lock versions; gh and confluence-cli their latest release.

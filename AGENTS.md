@@ -18,6 +18,7 @@ rtk bash -n install.sh test/dry-run.sh test/idempotence.sh .bash_profile .bashrc
 shellcheck install.sh test/*.sh
 rtk test/dry-run.sh
 rtk test/idempotence.sh
+test/eba-versions.sh               # dotfiles-eba: pins match EBA origin/master
 rtk npx --yes cspell --no-progress --gitignore --dot "**/*"
 HOMEBREW_NO_AUTO_UPDATE=1 rtk brew bundle check --file=Brewfile --verbose
 ```
